@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 define('OPENGRAPH_META_TABLE','opengraph_meta');
 

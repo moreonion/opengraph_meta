@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 require_once('opengraph_meta.common.inc');
 
