@@ -20,6 +20,7 @@ class OpenGraphMeta {
   const IMAGE = 'image';
   const SITE_NAME = 'site_name';
   const TYPE = 'type';
+  const URL = 'url';
 
   // Location tags
   const LATITUDE = 'latitude';
@@ -110,6 +111,7 @@ class OpenGraphMeta {
         self::DESCRIPTION => '',
         self::IMAGE => '',
         self::TYPE => '',
+        self::URL => '',
       );
     }
 
@@ -124,6 +126,7 @@ class OpenGraphMeta {
       $ret[self::TYPE] = $this->settings_obj->get(OPENGRAPH_META_VAR_CONTENT_TYPE_.$node->type,'');
       $image_paths = $this->harvest_images_from_node($node);
       $ret[self::IMAGE] = !empty($image_paths) ? array_shift($image_paths) : '';
+      $ret[self::URL] = url(drupal_get_path_alias('node/'.$node->nid),array('absolute' => TRUE));
     }
 
     return $ret;
