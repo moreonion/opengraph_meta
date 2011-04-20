@@ -20,6 +20,7 @@ class OpenGraphMeta {
   const IMAGE = 'image';
   const SITE_NAME = 'site_name';
   const TYPE = 'type';
+  const URL = 'url';
 
   // Location tags
   const LATITUDE = 'latitude';
@@ -99,8 +100,9 @@ class OpenGraphMeta {
   /**
    * Get default values for all meta tags (including optional ones).
    * @param $node a node object. If provided then defaults will be tailored to this node.
+   * @param $full_view whether the node is being viewed on its own in full view.
    */
-  private function get_og_tag_defaults($node = NULL) {
+  private function get_og_tag_defaults($node = NULL, $full_view = FALSE) {
     // defaults
     static $defaults = array();
     if (empty($defaults)) {
@@ -109,6 +111,7 @@ class OpenGraphMeta {
         self::DESCRIPTION => '',
         self::IMAGE => '',
         self::TYPE => '',
+        self::URL => '',
       );
     }
 
@@ -124,6 +127,7 @@ class OpenGraphMeta {
       $ret[self::TYPE] = $this->settings_obj->get(OPENGRAPH_META_VAR_CONTENT_TYPE_.$node->type,'');
       $image_paths = $this->harvest_images_from_node($node);
       $ret[self::IMAGE] = !empty($image_paths) ? array_shift($image_paths) : '';
+      $ret[self::URL] = url(drupal_get_path_alias('node/'.$node->nid),array('absolute' => TRUE));
     }
 
     return $ret;
@@ -227,7 +231,7 @@ class OpenGraphMeta {
   /** Render the meta tag data for the given node. */
   public function render_data($node, $opengraph_data) {
     // fallback values in case no values set.
-    $allfields = $this->get_og_tag_defaults($node);
+    $allfields = $this->get_og_tag_defaults($node, TRUE);
     foreach ($allfields as $field => $_d) {
       $v = !empty($opengraph_data[$field]) ? $opengraph_data[$field] : $_d;
       if (!empty($v)) {
