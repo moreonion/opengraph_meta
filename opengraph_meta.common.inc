@@ -99,8 +99,9 @@ class OpenGraphMeta {
   /**
    * Get default values for all meta tags (including optional ones).
    * @param $node a node object. If provided then defaults will be tailored to this node.
+   * @param $full_view whether the node is being viewed on its own in full view.
    */
-  private function get_og_tag_defaults($node = NULL) {
+  private function get_og_tag_defaults($node = NULL, $full_view = FALSE) {
     // defaults
     static $defaults = array();
     if (empty($defaults)) {
@@ -118,7 +119,7 @@ class OpenGraphMeta {
 
     if (!empty($node)) {
       // if node given then override defaults
-      $ret[self::TITLE] = $node->title;
+      $ret[self::TITLE] = $full_view ? drupal_get_title() : $node->title;
       $ret[self::DESCRIPTION] = !empty($node->body) ? mb_substr(strip_tags($node->body),0,200) : $node->title;
       $ret[self::TYPE] = $this->settings_obj->get(OPENGRAPH_META_VAR_CONTENT_TYPE_.$node->type,'');
       $image_paths = $this->harvest_images_from_node($node);
@@ -226,7 +227,7 @@ class OpenGraphMeta {
   /** Render the meta tag data for the given node. */
   public function render_data($node, $opengraph_data) {
     // fallback values in case no values set.
-    $allfields = $this->get_og_tag_defaults($node);
+    $allfields = $this->get_og_tag_defaults($node, TRUE);
     foreach ($allfields as $field => $_d) {
       $v = !empty($opengraph_data[$field]) ? $opengraph_data[$field] : $_d;
       if (!empty($v)) {
