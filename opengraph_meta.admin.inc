@@ -8,7 +8,7 @@ require_once('opengraph_meta.common.inc');
  */
 function opengraph_meta_settings_form() {
 
-  $types = node_get_types();
+  $types = node_type_get_types();
 
   $type_options = array();
   foreach ($types as $id => $data) {
@@ -97,7 +97,7 @@ function opengraph_meta_settings_form_submit($form, &$form_state) {
   variable_set(OPENGRAPH_META_VAR_CONTENT_TYPES_ENABLED, $values[OPENGRAPH_META_VAR_CONTENT_TYPES_ENABLED]);
 
   // save og:type for each content type
-  $types = node_get_types();
+  $types = node_type_get_types();
   foreach ($types as $id => $data) {
     variable_set(OPENGRAPH_META_VAR_CONTENT_TYPE_.$id, $values['types'][OPENGRAPH_META_VAR_CONTENT_TYPE_.$id]);
   }

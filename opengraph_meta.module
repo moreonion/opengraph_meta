@@ -3,16 +3,24 @@
 require_once('opengraph_meta.common.inc');
 
 
-define('OPENGRAPH_META_MENU_ADMIN','admin/content/opengraph_meta');
-define('OPENGRAPH_META_MENU_ADMIN_SETTINGS',OPENGRAPH_META_MENU_ADMIN.'/settings');
+define('OPENGRAPH_META_MENU_ADMIN','admin/config/content/opengraph_meta');
 
 
 
 /**
- * Implements hook_perm().
+ * Implements hook_permission().
  */
-function opengraph_meta_perm() {
-  return array(OPENGRAPH_META_PERM_ADMIN, OPENGRAPH_META_PERM_EDIT);
+function opengraph_meta_permission() {
+  return array(
+      OPENGRAPH_META_PERM_ADMIN => array(
+          'title' => t('Administer Open Graph meta tags'),
+          'description' => t('Administer default Open Graph meta tags options'),
+      ),
+      OPENGRAPH_META_PERM_EDIT => array(
+          'title' => t('Edit Open Graph meta tags'),
+          'description' => t('Edit Open Graph meta tags on a node'),
+      ),
+  );
 }
 
 
@@ -28,15 +36,8 @@ function opengraph_meta_menu() {
     'page arguments' => array('opengraph_meta_settings_form'),
     'description' => 'Configure meta tags for Facebook sharing.',
     'access arguments' => $admin_access,
-    'type' => MENU_NORMAL_ITEM,
     'file' => 'opengraph_meta.admin.inc',
-  );
-  $items[OPENGRAPH_META_MENU_ADMIN_SETTINGS] = array(
-    'title' => 'Settings',
-    'access arguments' => $admin_access,
-    'type' => MENU_DEFAULT_LOCAL_TASK,
-    'weight' => -1,
-    'file' => 'opengraph_meta.admin.inc',
+    'menu_name' => 'management',
   );
 
   return $items;
@@ -111,12 +112,12 @@ function opengraph_meta_form_alter(&$form, $form_state, $form_id) {
     $form['opengraph_meta']['contact'] = array_merge($form['opengraph_meta']['contact'], _opengraph_meta_contact_form_fields($node));
 
     // if we have images in this node then show thumbnail selector
-    $image_paths = OpenGraphMeta::instance()->harvest_images_from_node($node);
-    if (!empty($image_paths)) {
+    $images = OpenGraphMeta::instance()->harvest_images_from_node($node);
+    if (!empty($images)) {
       $image_selector_options = array();
-      foreach ($image_paths as $path) {
-        $abs_path = url($path);
-        $image_selector_options[$path] = "<img src=\"$abs_path\" alt=\"$path\" title=\"$path\" width=\"32px\" height=\"32px\" />";
+      foreach ($images as $image) {
+        $variables = array('path' => $image['url'], 'alt' => $image['alt'], 'height' => '60px', 'attributes' => array('title' => $image['title']));
+        $image_selector_options[$image['url']] = theme('image', $variables);
       }
       $form['opengraph_meta'][OpenGraphMeta::IMAGE] = array(
         '#title' => t('Thumbnail image'),
@@ -177,31 +178,42 @@ function _opengraph_meta_contact_form_fields($node = NULL) {
 
 
 /**
- * Implements hook_nodeapi().
+ * Implements hook_node_load().
  */
-function opengraph_meta_nodeapi(&$node, $op, $teaser = NULL, $page = NULL) {
-  switch ($op) {
-    case 'delete':
-      OpenGraphMeta::instance()->delete_node_data($node->nid);
-      break;
-    case 'insert':
-    case 'update':
-      if (!empty($node->opengraph_meta)) {
-        OpenGraphMeta::instance()->save_node_data($node->nid, $node->opengraph_meta);
-      }
-      break;
-    case 'load':
-      if (OpenGraphMeta::instance()->tags_are_enabled_for_content_type($node->type)) {
-        return array('opengraph_meta' => OpenGraphMeta::instance()->load_node_data($node));
-      }
-      break;
-    case 'view':
-      // only show meta tags if viewing full node as a page
-      if (NODE_BUILD_NORMAL == $node->build_mode && !$teaser && $page && !empty($node->opengraph_meta))
-        OpenGraphMeta::instance()->render_data($node, $node->opengraph_meta);
+function opengraph_meta_node_load($nodes, $types) {
+  foreach($nodes as &$node){
+    if (OpenGraphMeta::instance()->tags_are_enabled_for_content_type($node->type)) {
+      $node->opengraph_meta = OpenGraphMeta::instance()->load_node_data($node);
+    }
+  }
+}
+
+/**
+ * Implements hook_node_view().
+ */
+function opengraph_meta_node_view($node, $view_mode, $langcode){
+  // only show meta tags if viewing full node as a page
+  if ('full' == $view_mode && !empty($node->opengraph_meta)) {
+    OpenGraphMeta::instance()->render_data($node, $node->opengraph_meta);
   }
 }
 
 
+/**
+ * Implements hook_node_update().
+ */
+function opengraph_meta_node_update($node){
+  if (!empty($node->opengraph_meta)) {
+    OpenGraphMeta::instance()->save_node_data($node->nid, $node->opengraph_meta);
+  }
+}
+
+
+/**
+ * Implements hook_node_delete().
+ */
+function opengraph_meta_node_delete($node){
+  OpenGraphMeta::instance()->delete_node_data($node->nid);
+}
 
 
