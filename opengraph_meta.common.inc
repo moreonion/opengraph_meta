@@ -24,7 +24,7 @@ class OpenGraphMeta {
   // Location tags
   const LATITUDE = 'latitude';
   const LONGITUDE = 'longitude';
-  const STREET_ADDRESS = 'street_address';
+  const STREET_ADDRESS = 'street-address';
   const LOCALITY = 'locality';
   const REGION = 'region';
   const POST_CODE = 'postal-code';
