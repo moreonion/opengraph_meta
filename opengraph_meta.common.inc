@@ -8,6 +8,7 @@ define('OPENGRAPH_META_PERM_EDIT', 'edit Open Graph meta tags');
 define('OPENGRAPH_META_VAR_CONTENT_TYPES_ENABLED', 'opengraph_meta_types_enabled');
 define('OPENGRAPH_META_VAR_CONTENT_TYPE_', 'opengraph_meta_type_');
 define('OPENGRAPH_META_VAR_SITE_NAME', 'opengraph_meta_site_name');
+define('OPENGRAPH_META_VAR_FALLBACK_IMG', 'opengraph_meta_fallback_img');
 
 define('OPENGRAPH_META_VAR_OPTIONAL_TAGS', 'opengraph_meta_optional_tags');
 
@@ -118,14 +119,18 @@ class OpenGraphMeta {
     $ret = array_merge($defaults, $this->get_og_optional_tag_defaults($node));
 
     $ret[self::SITE_NAME] = $this->settings_obj->get(OPENGRAPH_META_VAR_SITE_NAME, $this->settings_obj->get('site_name','Drupal'));
+    $ret[self::IMAGE] = $this->settings_obj->get(OPENGRAPH_META_VAR_FALLBACK_IMG, '');
 
     if (!empty($node)) {
       // if node given then override defaults
       $ret[self::TITLE] = $full_view ? drupal_get_title() : $node->title;
       $ret[self::DESCRIPTION] = !empty($node->body) ? mb_substr(strip_tags($node->body),0,200) : $node->title;
       $ret[self::TYPE] = $this->settings_obj->get(OPENGRAPH_META_VAR_CONTENT_TYPE_.$node->type,'');
+
       $image_paths = $this->harvest_images_from_node($node);
-      $ret[self::IMAGE] = !empty($image_paths) ? array_shift($image_paths) : '';
+      if (!empty($image_paths))
+        $ret[self::IMAGE] = array_shift($image_paths);
+      
       $ret[self::URL] = url(drupal_get_path_alias('node/'.$node->nid),array('absolute' => TRUE));
     }
 
@@ -236,7 +241,7 @@ class OpenGraphMeta {
       if (!empty($v)) {
         switch ($field) {
           case self::IMAGE:
-            $v = url($v, array('absolute' => TRUE));
+            $v = url(ltrim($v,'/'), array('absolute' => TRUE));
             break;
           case self::TITLE:
           case self::DESCRIPTION:

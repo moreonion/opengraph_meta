@@ -33,6 +33,12 @@ function opengraph_meta_settings_form() {
     '#description' => t('The value for the %site_name meta tag.',array('%site_name' => 'og:site_name')),
     '#default_value' => variable_get(OPENGRAPH_META_VAR_SITE_NAME, variable_get('site_name','Drupal')),
   );
+  $form['defaults'][OPENGRAPH_META_VAR_FALLBACK_IMG] = array(
+    '#title' => t('Fallback image'),
+    '#type' => 'textfield',
+    '#description' => t('Absolute or site-relative URL to an image to use for the %tag tag for nodes which don\'t have their own images.',array('%tag' => 'og:image')),
+    '#default_value' => variable_get(OPENGRAPH_META_VAR_FALLBACK_IMG, ''),
+  );
   $form['defaults']['types'] = array(
     '#type' => 'fieldset',
     '#title' => t('Mapping content type to meta type'),
@@ -102,8 +108,9 @@ function opengraph_meta_settings_form_submit($form, &$form_state) {
     variable_set(OPENGRAPH_META_VAR_CONTENT_TYPE_.$id, $values['types'][OPENGRAPH_META_VAR_CONTENT_TYPE_.$id]);
   }
 
-  // save site name
+  // save other vars
   variable_set(OPENGRAPH_META_VAR_SITE_NAME, $values[OPENGRAPH_META_VAR_SITE_NAME]);
+  variable_set(OPENGRAPH_META_VAR_FALLBACK_IMG, $values[OPENGRAPH_META_VAR_FALLBACK_IMG]);
 
   // save optional tags
   $options = array();
