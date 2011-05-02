@@ -122,7 +122,7 @@ function opengraph_meta_form_alter(&$form, $form_state, $form_id) {
         '#title' => t('Thumbnail image'),
         '#type' => 'radios',
         '#default_value' => !empty($node->opengraph_meta) ? $node->opengraph_meta[OpenGraphMeta::IMAGE] : '',
-        '#description' => t('The thumbnail image that will get shown in e.g. a Facebook preview. If left unset then then the first available image will be used.'),
+        '#description' => t('The thumbnail image that will get shown in e.g. a Facebook preview. If left unset then then the first available image will be used. If none available then the global fallback image will be used.'),
         '#options' => $image_selector_options,
       );
     }
@@ -141,6 +141,9 @@ function _opengraph_meta_location_form_fields($node = NULL) {
     OpenGraphMeta::POST_CODE => array('Post code', 'Postal code.'),
     OpenGraphMeta::COUNTRY_NAME => array('Country', 'Full country name.'),
   );
+
+  $defaults = OpenGraphMeta::instance()->get_og_optional_tag_defaults($node);
+
   foreach ($fields as $f => $i) {
     $ret[$f] = array(
       '#title' => t($i[0]),
@@ -149,6 +152,10 @@ function _opengraph_meta_location_form_fields($node = NULL) {
       '#default_value' => !empty($node->opengraph_meta) ? $node->opengraph_meta[$f] : '',
       '#description' => t($i[1]),
     );
+    // global fallback value?
+    if (!empty($node) && !empty($defaults[$f])) {
+      $ret[$f]['#description'] .= t(' If left unset then the global fallback value will be used: "@s"',array('@s' => $defaults[$f]));
+    }
   }
   return $ret;
 }
@@ -157,10 +164,13 @@ function _opengraph_meta_location_form_fields($node = NULL) {
 function _opengraph_meta_contact_form_fields($node = NULL) {
   $ret = array();
   $fields = array(
-    OpenGraphMeta::EMAIL => array('Email', ''),
-    OpenGraphMeta::PHONE_NUMBER => array('Phone number', ''),
-    OpenGraphMeta::FAX_NUMBER => array('Fax number', ''),
+    OpenGraphMeta::EMAIL => array('Email', 'Email address.'),
+    OpenGraphMeta::PHONE_NUMBER => array('Phone number', 'Phone number.'),
+    OpenGraphMeta::FAX_NUMBER => array('Fax number', 'Fax number.'),
   );
+
+  $defaults = OpenGraphMeta::instance()->get_og_optional_tag_defaults($node);
+
   foreach ($fields as $f => $i) {
     $ret[$f] = array(
       '#title' => t($i[0]),
@@ -169,6 +179,10 @@ function _opengraph_meta_contact_form_fields($node = NULL) {
       '#default_value' => !empty($node->opengraph_meta) ? $node->opengraph_meta[$f] : '',
       '#description' => t($i[1]),
     );
+    // global fallback value?
+    if (!empty($node) && !empty($defaults[$f])) {
+      $ret[$f]['#description'] .= t(' If left unset then the global fallback value will be used: "@s"',array('@s' => $defaults[$f]));
+    }
   }
   return $ret;
 }
