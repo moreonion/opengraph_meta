@@ -7,6 +7,7 @@ define('OPENGRAPH_META_PERM_EDIT', 'edit Open Graph meta tags');
 
 define('OPENGRAPH_META_VAR_CONTENT_TYPES_ENABLED', 'opengraph_meta_types_enabled');
 define('OPENGRAPH_META_VAR_CONTENT_TYPE_', 'opengraph_meta_type_');
+define('OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_', 'opengraph_meta_cck_');
 define('OPENGRAPH_META_VAR_SITE_NAME', 'opengraph_meta_site_name');
 define('OPENGRAPH_META_VAR_FALLBACK_IMG', 'opengraph_meta_fallback_img');
 
@@ -124,7 +125,24 @@ class OpenGraphMeta {
     if (!empty($node)) {
       // if node given then override defaults
       $ret[self::TITLE] = $full_view ? drupal_get_title() : $node->title;
-      $ret[self::DESCRIPTION] = !empty($node->body) ? mb_substr(strip_tags($node->body),0,200) : $node->title;
+
+      $description = '';
+
+      // check if we have an alternative field from which to grab description.
+      $description_cck_field = variable_get(OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$node->type, '');
+      if (!empty($description_cck_field) && !empty($node->$description_cck_field)) {
+        $v = $node->$description_cck_field;
+        if (is_array($v[0]) && !empty($v[0]['value'])) {
+          $description = $v[0]['value'];
+        }
+      }
+      // fall back to body and title
+      if (empty($description))
+        $description = !empty($node->body) ? $node->body : $node->title;
+
+      $ret[self::DESCRIPTION] = mb_substr(strip_tags($description),0,200);
+
+      
       $ret[self::TYPE] = $this->settings_obj->get(OPENGRAPH_META_VAR_CONTENT_TYPE_.$node->type,'');
 
       $image_paths = $this->harvest_images_from_node($node);
