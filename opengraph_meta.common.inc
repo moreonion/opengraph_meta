@@ -61,9 +61,9 @@ class OpenGraphMeta {
   /** Get singleton instance. */
   public static function instance() {
     if (empty(self::$instance)) {
-      $instance = new OpenGraphMeta();
+      self::$instance = new OpenGraphMeta();
     }
-    return $instance;
+    return self::$instance;
   }
 
 
