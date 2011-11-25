@@ -1,0 +1,4 @@
+2011-11-25
+----------
+by hiddentao: Added changelog.
+by hiddentao: Fixed minor bug in OpenGraphMeta singleton factory method.
