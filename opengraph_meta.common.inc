@@ -50,6 +50,12 @@ class OpenGraphMeta {
   private $data_obj = NULL;
 
   /**
+   * @var array Keep track of which meta tags have already been written to output so that we don't write them again.
+   * This is handy when we're outputting multiples nodes to a single page view.
+   */
+  private $tags_already_output = array();
+
+  /**
    * Constructor
    */
   private function __construct() {
@@ -255,7 +261,15 @@ class OpenGraphMeta {
     // fallback values in case no values set.
     $allfields = $this->get_og_tag_defaults($node, TRUE);
     foreach ($allfields as $field => $_d) {
+
+      // already written this meta tag to output?
+      if (array_key_exists($field, $this->tags_already_output)) {
+        $this->warn(t("Already output og:%s",array('%s' => $field)));
+        continue;
+      }
+
       $v = !empty($opengraph_data[$field]) ? $opengraph_data[$field] : $_d;
+
       if (!empty($v)) {
         switch ($field) {
           case self::IMAGE:
@@ -275,7 +289,10 @@ class OpenGraphMeta {
             break;
         }
         $this->render_obj->add_meta('og:'.$field, $v);
+        $this->tags_already_output[$field] = true;
+
       } // if value available for field
+
     } // for each field
   }
 
@@ -326,6 +343,14 @@ class OpenGraphMeta {
         }
       }
     }
+  }
+
+  /**
+   * Log a warning message.
+   * @param $msg the message.
+   */
+  public function warn($msg) {
+    watchdog('opengraph_meta', $msg, array(), WATCHDOG_WARNING);
   }
 
   /**
