@@ -139,8 +139,14 @@ function opengraph_meta_settings_form_submit($form, &$form_state) {
   // save og:type for each content type
   $types = node_get_types();
   foreach ($types as $id => $data) {
-    variable_set(OPENGRAPH_META_VAR_CONTENT_TYPE_.$id, $values['types'][OPENGRAPH_META_VAR_CONTENT_TYPE_.$id]);
-    variable_set(OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$id, $values['description_cck'][OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$id]);
+
+    $content_type_id = OPENGRAPH_META_VAR_CONTENT_TYPE_.$id;
+    if (array_key_exists($content_type_id, $values['types']))
+      variable_set(OPENGRAPH_META_VAR_CONTENT_TYPE_.$id, $values['types'][OPENGRAPH_META_VAR_CONTENT_TYPE_.$id]);
+
+    $cck_content_type_id = OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$id;
+    if (array_key_exists($cck_content_type_id, $values['description_cck']))
+      variable_set(OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$id, $values['description_cck'][OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$id]);
   }
 
   // save other vars
