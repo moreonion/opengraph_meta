@@ -481,8 +481,7 @@ class OpenGraphMetaDrupalLayer {
         $cck_content_type_id = OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$type_id;
         if (array_key_exists($cck_content_type_id, $form_values['description_cck']))
           variable_set($cck_content_type_id, $form_values['description_cck'][$cck_content_type_id]);
-      case 7:
-      case 8:
+      default:
         $content_type_id = OPENGRAPH_META_VAR_CONTENT_TYPE_.$type_id;
         if (array_key_exists($content_type_id, $form_values['types']))
           variable_set($content_type_id, $form_values['types'][$content_type_id]);
@@ -511,8 +510,7 @@ class OpenGraphMetaDrupalLayer {
         if (empty($body) && !empty($node->body))
           $body = $node->body;
         break;
-      case 7:
-      case 8:
+      default:
         $lang = field_language('node', $node, 'body');
         if (
             !empty($node) &&
@@ -585,6 +583,8 @@ class OpenGraphMetaDrupalLayer {
         return '';
     }
   }
+
+
 
 
   /**

@@ -6,22 +6,6 @@ require_once('opengraph_meta.common.inc');
 define('OPENGRAPH_META_MENU_ADMIN','admin/config/content/opengraph_meta');
 
 
-/**
- * Implements hook_permission().
- */
-function opengraph_meta_permission() {
-  return array(
-      OPENGRAPH_META_PERM_ADMIN => array(
-          'title' => t('Administer Open Graph meta tags'),
-          'description' => t('Administer default Open Graph meta tags options'),
-      ),
-      OPENGRAPH_META_PERM_EDIT => array(
-          'title' => t('Edit Open Graph meta tags'),
-          'description' => t('Edit Open Graph meta tags on a node'),
-      ),
-  );
-}
-
 
 /**
  * Implementation of hook_menu.
@@ -38,6 +22,17 @@ function opengraph_meta_menu() {
     'file' => 'opengraph_meta.admin.inc',
     'menu_name' => 'management',
   );
+
+  if (6 == OPENGRAPH_META_DRUPAL_VERSION) {
+    $items[OPENGRAPH_META_MENU_ADMIN]['type'] = MENU_NORMAL_ITEM;
+    $items[rtrim(OPENGRAPH_META_MENU_ADMIN,'/').'/settings'] = array(
+      'title' => 'Settings',
+      'access arguments' => $admin_access,
+      'type' => MENU_DEFAULT_LOCAL_TASK,
+      'weight' => -1,
+      'file' => 'opengraph_meta.admin.inc',
+    );
+  }
 
   return $items;
 }
@@ -123,6 +118,7 @@ function opengraph_meta_form_alter(&$form, $form_state, $form_id) {
         '#default_value' => !empty($node->opengraph_meta) ? $node->opengraph_meta[OpenGraphMeta::IMAGE] : '',
         '#description' => t('The thumbnail image that will get shown in e.g. a Facebook preview. If left unset then then the first available image will be used. If none available then the global fallback image will be used.'),
         '#options' => $image_selector_options,
+        '#attributes' => array('class' => 'opengraph-thumbs-wrapper clearfix'),
       );
     }
   }
@@ -188,53 +184,8 @@ function _opengraph_meta_contact_form_fields($node = NULL) {
 
 
 
-
-/**
- * Implements hook_node_load().
- */
-function opengraph_meta_node_load($nodes, $types) {
-  foreach($nodes as &$node){
-    if (OpenGraphMeta::instance()->tags_are_enabled_for_content_type($node->type)) {
-      $node->opengraph_meta = OpenGraphMeta::instance()->load_node_data($node);
-    }
-  }
+if (6 == OPENGRAPH_META_DRUPAL_VERSION) {
+  require_once 'opengraph_meta.drupal6-hooks.inc';
+} else {
+  require_once 'opengraph_meta.drupal7-hooks.inc';
 }
-
-/**
- * Implements hook_node_view().
- */
-function opengraph_meta_node_view($node, $view_mode, $langcode){
-  // only show meta tags if viewing full node as a page
-  if ('full' == $view_mode && !empty($node->opengraph_meta)) {
-    OpenGraphMeta::instance()->render_data($node, $node->opengraph_meta);
-  }
-}
-
-
-/**
- * Implements hook_node_insert().
- */
-function opengraph_meta_node_insert($node){
-  opengraph_meta_node_update($node);
-}
-
-
-
-/**
- * Implements hook_node_update().
- */
-function opengraph_meta_node_update($node){
-  if (!empty($node->opengraph_meta)) {
-    OpenGraphMeta::instance()->save_node_data($node->nid, $node->opengraph_meta);
-  }
-}
-
-
-/**
- * Implements hook_node_delete().
- */
-function opengraph_meta_node_delete($node){
-  OpenGraphMeta::instance()->delete_node_data($node->nid);
-}
-
-
