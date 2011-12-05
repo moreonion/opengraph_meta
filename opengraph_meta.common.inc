@@ -327,7 +327,16 @@ class OpenGraphMeta {
    * @return empty string if no body found.
    */
   private function get_node_body($node) {
-    return (!empty($node) && !empty($node->body) && !empty($node->body['und']['0']['value'])) ? $node->body['und']['0']['value'] : '';
+    $lang = field_language('node', $node, 'body');
+    if (
+        !empty($node) &&
+        !empty($node->body) &&
+        !empty($node->body[$lang]) &&
+        !empty($node->body[$lang]['0']) &&
+        !empty($node->body[$lang]['0']['value'])
+      )
+          return $node->body[$lang]['0']['value'];
+    return '';
   }
 
 
