@@ -31,7 +31,7 @@ class OGMTBasicTest extends DrupalTestCase {
     $this->ogm_render = new OGMTestRender();
     $this->ogm_objects_backup = $this->ogm->__get_objects();
     $this->ogm->__set_objects($this->ogm_data, $this->ogm_settings, $this->ogm_render);
-    $this->ogm->__reset_tags_already_output();
+    $this->_reset_rendered_tags();
   }
 
   function tearDown() {
@@ -46,15 +46,22 @@ class OGMTBasicTest extends DrupalTestCase {
      */
 
     $node = new stdClass();
-    $node->body = 'bla bla bla <a href="this is">...<img src="body.jpg">...<img> <img src=""></p>';  // test broken HTML
+
+    $this->_set_node_body($node,
+        'bla bla bla <a href="this is">...<img src="body.jpg">...<img> <img src=""></p>'  // test broken HTML
+    );
+
     $node->type = 'page';
-    $node->field_image = array('filemime' => 'image', 'filepath' => 'field1.jpg');
-    $node->field_no_image = array('filemime' => 'pdf', 'filepath' => 'field2.jpg');
-    $node->sub_field_image = array('child' => array('filemime' => 'image', 'filepath' => 'subfield.jpg'));
+    $node->field_image = $this->_create_img_field('image','field1.jpg');
+    $node->field_no_image = $this->_create_img_field('pdf','field2.jpg');
+    $node->sub_field_image = array('child' => $this->_create_img_field('image','subfield.jpg'));
     $ret = $this->ogm->harvest_images_from_node($node);
     $expected = array();
-    foreach (array('field1.jpg','subfield.jpg','body.jpg') as $imgpath)
+    foreach (array('field1.jpg','subfield.jpg','body.jpg') as $imgpath) {
+      if (7 <= OPENGRAPH_META_DRUPAL_VERSION && 'body.jpg' != $imgpath)
+        $imgpath = image_style_url('thumbnail', $imgpath);
       array_push($expected, array('title' => $imgpath, 'alt' => $imgpath, 'url' => $imgpath));
+    }
     $this->assertEqual(serialize($expected), serialize($ret), t('Extract images from node fields and body content'));
   }
   
@@ -163,7 +170,7 @@ class OGMTBasicTest extends DrupalTestCase {
     $this->ogm->render_data($node, $this->ogm->load_node_data($node));
     $this->_check_rendered_meta_tags(array(
       'og:'.OpenGraphMeta::TITLE => $node->title,
-      'og:'.OpenGraphMeta::DESCRIPTION => mb_substr(strip_tags($node->body),0,200),
+      'og:'.OpenGraphMeta::DESCRIPTION => mb_substr(strip_tags(OpenGraphMetaDrupalLayer::get_node_body($node)),0,200),
       'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
       'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
     ),__FUNCTION__);
@@ -242,26 +249,28 @@ class OGMTBasicTest extends DrupalTestCase {
     $this->ogm->render_data($node, $this->ogm->load_node_data($node));
     $this->_check_rendered_meta_tags(array(
       'og:'.OpenGraphMeta::TITLE => $node->title,
-      'og:'.OpenGraphMeta::DESCRIPTION => mb_substr(strip_tags($node->body),0,200),
+      'og:'.OpenGraphMeta::DESCRIPTION => mb_substr(strip_tags(OpenGraphMetaDrupalLayer::get_node_body($node)),0,200),
       'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
       'og:'.OpenGraphMeta::IMAGE => url('default.jpg', array('absolute' => TRUE)),
       'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
-    ),__FUNCTION__);
+    ),__FUNCTION__.' default image is returned');
 
     // Add an image to the node
-    $node->field_image = array(
-      'filemime' => 'image/jpeg',
-      'filepath' => 'node.jpg',
-    );
-    $this->ogm->__reset_tags_already_output();
+    $this->_reset_rendered_tags();
+    $node->field_image = $this->_create_img_field('image/jpeg','node.jpg');
     $this->ogm->render_data($node, $this->ogm->load_node_data($node));
+
+    $imgpath = 'node.jpg';
+    if (7 <= OPENGRAPH_META_DRUPAL_VERSION && 'body.jpg' != $imgpath)
+      $imgpath = image_style_url('thumbnail', $imgpath);
+
     $this->_check_rendered_meta_tags(array(
       'og:'.OpenGraphMeta::TITLE => $node->title,
-      'og:'.OpenGraphMeta::DESCRIPTION => mb_substr(strip_tags($node->body),0,200),
+      'og:'.OpenGraphMeta::DESCRIPTION => mb_substr(strip_tags(OpenGraphMetaDrupalLayer::get_node_body($node)),0,200),
       'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
-      'og:'.OpenGraphMeta::IMAGE => url('node.jpg', array('absolute' => TRUE)),
+      'og:'.OpenGraphMeta::IMAGE => url($imgpath, array('absolute' => TRUE)),
       'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
-    ),__FUNCTION__);
+    ),__FUNCTION__.' default image is overridden');
   }
 
 
@@ -280,10 +289,34 @@ class OGMTBasicTest extends DrupalTestCase {
     $node = new stdClass();
     $node->nid = $nid;
     $node->title = 'test title';
-    $node->body = str_pad('',255,'ab');
     $node->type = 'type1';
+    $this->_set_node_body($node, str_pad('',255,'ab'));
     return $node;
   }
+
+
+  private function _set_node_body(&$node, $body) {
+    switch (OPENGRAPH_META_DRUPAL_VERSION) {
+      case 6:
+        $node->body = $body;
+        break;
+      default:
+        $node->body = array(LANGUAGE_NONE => array('0' => array('value' => $body)));
+    }
+  }
+
+
+  private function _create_img_field($mime, $path) {
+    switch (OPENGRAPH_META_DRUPAL_VERSION) {
+      case 6:
+        return array('filemime' => $mime, 'filepath' => $path);
+        break;
+      default:
+        return array('filemime' => $mime, 'uri' => $path);
+    }
+  }
+
+
 
   private function _check_rendered_meta_tags(array $expected, $msg) {
     $diff = array_diff_assoc($expected, $this->ogm_render->meta) + array_diff_assoc($this->ogm_render->meta, $expected);
@@ -296,6 +329,12 @@ class OGMTBasicTest extends DrupalTestCase {
     $result = empty($diff);
 
     $this->assertTrue($result, $result ? NULL : "$msg: $str");
+  }
+
+
+  private function _reset_rendered_tags() {
+    $this->ogm->__reset_tags_already_output();
+    $this->ogm_render->meta = array();
   }
 }
 
