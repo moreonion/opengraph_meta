@@ -115,8 +115,7 @@ function opengraph_meta_form_alter(&$form, $form_state, $form_id) {
     if (!empty($images)) {
       $image_selector_options = array();
       foreach ($images as $image) {
-        $variables = array('path' => $image['url'], 'alt' => $image['alt'], 'height' => '60px', 'attributes' => array('title' => $image['title']));
-        $image_selector_options[$image['url']] = theme('image', $variables);
+        $image_selector_options[$image['url']] = OpenGraphMetaDrupalLayer::theme_selector_image($image);
       }
       $form['opengraph_meta'][OpenGraphMeta::IMAGE] = array(
         '#title' => t('Thumbnail image'),

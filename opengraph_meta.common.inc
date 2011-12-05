@@ -478,11 +478,14 @@ class OpenGraphMetaDrupalLayer {
   public static function update_default_ogtype_for_node_type($type_id, $form_values) {
     switch (OPENGRAPH_META_DRUPAL_VERSION) {
       case 6:
-        // CCK only relevant in Drupal 6
-        variable_set(OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$type_id, $form_values['description_cck'][OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$type_id]);
+        $cck_content_type_id = OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$type_id;
+        if (array_key_exists($cck_content_type_id, $form_values['description_cck']))
+          variable_set($cck_content_type_id, $form_values['description_cck'][$cck_content_type_id]);
       case 7:
       case 8:
-        variable_set(OPENGRAPH_META_VAR_CONTENT_TYPE_.$type_id, $form_values['types'][OPENGRAPH_META_VAR_CONTENT_TYPE_.$type_id]);
+        $content_type_id = OPENGRAPH_META_VAR_CONTENT_TYPE_.$type_id;
+        if (array_key_exists($content_type_id, $form_values['types']))
+          variable_set($content_type_id, $form_values['types'][$content_type_id]);
     }
   }
 
@@ -544,6 +547,32 @@ class OpenGraphMetaDrupalLayer {
           self::extract_image_fields($cv, $resultarray);
         }
       }
+    }
+  }
+
+
+  /** Get rendered IMG tag for the OGMT node image selector. */
+  public static function theme_selector_image($image) {
+    $attributes = array('class' => 'opengraph-thumb');
+    switch (OPENGRAPH_META_DRUPAL_VERSION) {
+      case 6:
+        $abs_path = url(ltrim($image['url'],'/'));
+        return theme('image', $abs_path, $image['alt'], $image['title'], $attributes);
+        break;
+      case 7:
+      case 8:
+        return theme('image',
+          array(
+               'path' => $image['url'],
+               'alt' => $image['alt'],
+               'height' => '60px',
+               'attributes' => array_merge($attributes, array('title' => $image['title']))
+          )
+        );
+        break;
+      default:
+        self::err('No API for theming images');
+        return '';
     }
   }
 
