@@ -519,6 +519,8 @@ class OpenGraphMetaDrupalLayer {
         break;
       default:
         $lang = field_language('node', $node, 'body');
+        if (!$lang)
+          $lang = LANGUAGE_NONE;
         if (
             !empty($node) &&
             !empty($node->body) &&
