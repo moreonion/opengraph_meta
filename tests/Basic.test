@@ -46,11 +46,15 @@ class OGMTBasicTest extends DrupalTestCase {
 
     $node = new stdClass();
     $node->body = 'bla bla bla <a href="this is">...<img src="body.jpg">...<img> <img src=""></p>';  // test broken HTML
+    $node->type = 'page';
     $node->field_image = array('filemime' => 'image', 'filepath' => 'field1.jpg');
     $node->field_no_image = array('filemime' => 'pdf', 'filepath' => 'field2.jpg');
     $node->sub_field_image = array('child' => array('filemime' => 'image', 'filepath' => 'subfield.jpg'));
     $ret = $this->ogm->harvest_images_from_node($node);
-    $this->assertEqual(serialize(array('field1.jpg','subfield.jpg','body.jpg')), serialize($ret), t('Extract images from node fields and body content'));
+    $expected = array();
+    foreach (array('field1.jpg','subfield.jpg','body.jpg') as $imgpath)
+      array_push($expected, array('title' => $imgpath, 'alt' => $imgpath, 'url' => $imgpath));
+    $this->assertEqual(serialize($expected), serialize($ret), t('Extract images from node fields and body content'));
   }
   
   function testMetaTagsEnabledForContentType() {
