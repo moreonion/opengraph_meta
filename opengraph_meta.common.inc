@@ -129,7 +129,6 @@ class OpenGraphMeta {
     $ret = array_merge($defaults, $this->get_og_optional_tag_defaults($node));
 
     $ret[self::SITE_NAME] = $this->settings_obj->get(OPENGRAPH_META_VAR_SITE_NAME, $this->settings_obj->get('site_name','Drupal'));
-    $ret[self::IMAGE] = $this->settings_obj->get(OPENGRAPH_META_VAR_FALLBACK_IMG, '');
 
     if (!empty($node)) {
       // if node given then override defaults
@@ -137,6 +136,7 @@ class OpenGraphMeta {
       $body = OpenGraphMetaDrupalLayer::get_node_body($node);
       $ret[self::DESCRIPTION] = !empty($body) ? mb_substr(strip_tags($body),0,200) : $node->title;
       $ret[self::TYPE] = $this->settings_obj->get(OPENGRAPH_META_VAR_CONTENT_TYPE_.$node->type,'');
+      $ret[self::IMAGE] = $this->settings_obj->get(OPENGRAPH_META_VAR_FALLBACK_IMG, '');
 
       $images = $this->harvest_images_from_node($node);
       if (!empty($images)) {
@@ -346,6 +346,13 @@ class OpenGraphMeta {
     return array($this->data_obj, $this->settings_obj, $this->render_obj);
   }
 
+  /**
+   * FOR TESTING PURPOSES ONLY!
+   * Reset array which keeps track of which tags have already been output.
+   */
+  public function __reset_tags_already_output() {
+    $this->tags_already_output = array();
+  }
 }
 
 
