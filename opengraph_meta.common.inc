@@ -384,21 +384,20 @@ interface OGMData {
 }
 class OGMDrupalData implements OGMData {
   public function load_tags($nid) {
-    $result = db_query("SELECT * FROM {".OPENGRAPH_META_TABLE."} WHERE nid = :nid", array(':nid' => $nid));
-    if (0 >= $result->rowCount())
-      return FALSE;
-    $ret = $result->fetchObject();
-    // get optional field value as array
-    $optional_db_field_name = OpenGraphMeta::__OPTIONAL_DB_FIELD;
-    $optionals = !empty($ret->$optional_db_field_name) ? unserialize($ret->$optional_db_field_name) : array();
-    // extract optional fields
-    foreach (OpenGraphMeta::instance()->get_og_optional_tag_defaults() as $tag => $dv) {
-      $ret->$tag = !empty($optionals[$tag]) ? $optionals[$tag] : $dv;
+    $ret = OpenGraphMetaDrupalLayer::load_tags($nid);
+    if (!empty($ret)) {
+      // get optional field value as array
+      $optional_db_field_name = OpenGraphMeta::__OPTIONAL_DB_FIELD;
+      $optionals = !empty($ret->$optional_db_field_name) ? unserialize($ret->$optional_db_field_name) : array();
+      // extract optional fields
+      foreach (OpenGraphMeta::instance()->get_og_optional_tag_defaults() as $tag => $dv) {
+        $ret->$tag = !empty($optionals[$tag]) ? $optionals[$tag] : $dv;
+      }
     }
     return $ret;
   }
   public function delete_tags($nid) {
-    db_query("DELETE FROM {".OPENGRAPH_META_TABLE."} WHERE nid = :nid", array(':nid' => $nid));
+    OpenGraphMetaDrupalLayer::delete_tags($nid);
   }
   public function update_tags($field_data_including_nid, $primary_key = array()) {
     // push optional fields into special db field
@@ -584,6 +583,31 @@ class OpenGraphMetaDrupalLayer {
     }
   }
 
+  /** Delete OGM tags for given node. */
+  public static function delete_tags($nid) {
+    switch (OPENGRAPH_META_DRUPAL_VERSION) {
+      case 6:
+        db_query("DELETE FROM {".OPENGRAPH_META_TABLE."} WHERE nid = %d", $nid);
+        break;
+      default:
+        db_query("DELETE FROM {".OPENGRAPH_META_TABLE."} WHERE nid = :nid", array(':nid' => $nid));
+    }
+  }
+
+
+  /** Load OGM tags for given node. */
+  public static function load_tags($nid) {
+    switch (OPENGRAPH_META_DRUPAL_VERSION) {
+      case 6:
+        return db_fetch_object(db_query("SELECT * FROM {".OPENGRAPH_META_TABLE."} WHERE nid = %d", $nid));
+        break;
+      default:
+        $result = db_query("SELECT * FROM {".OPENGRAPH_META_TABLE."} WHERE nid = :nid", array(':nid' => $nid));
+        if (0 >= $result->rowCount())
+          return FALSE;
+        return $result->fetchObject();
+    }
+  }
 
 
 
