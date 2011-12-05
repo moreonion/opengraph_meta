@@ -496,10 +496,20 @@ class OpenGraphMetaDrupalLayer {
    * @return empty string if no body found.
    */
   public static function get_node_body($node) {
+    $body = '';
+
     switch (OPENGRAPH_META_DRUPAL_VERSION) {
       case 6:
-        if (!empty($node->body))
-          return $node->body;
+        // check if we have an alternative field from which to grab description.
+        $description_cck_field = variable_get(OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$node->type, '');
+        if (!empty($description_cck_field) && !empty($node->$description_cck_field)) {
+          $v = $node->$description_cck_field;
+          if (is_array($v[0]) && !empty($v[0]['value']))
+            $body = $v[0]['value'];
+        }
+
+        if (empty($body) && !empty($node->body))
+          $body = $node->body;
         break;
       case 7:
       case 8:
@@ -511,10 +521,10 @@ class OpenGraphMetaDrupalLayer {
             !empty($node->body[$lang]['0']) &&
             !empty($node->body[$lang]['0']['value'])
           )
-              return $node->body[$lang]['0']['value'];
+              $body = $node->body[$lang]['0']['value'];
         break;
     }
-    return '';
+    return $body;
   }
 
 
