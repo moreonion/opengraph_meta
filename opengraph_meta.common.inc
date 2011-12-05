@@ -134,7 +134,7 @@ class OpenGraphMeta {
     if (!empty($node)) {
       // if node given then override defaults
       $ret[self::TITLE] = $full_view ? drupal_get_title() : $node->title;
-      $body = $this->get_node_body($node);
+      $body = OpenGraphMetaDrupalLayer::get_node_body($node);
       $ret[self::DESCRIPTION] = !empty($body) ? mb_substr(strip_tags($body),0,200) : $node->title;
       $ret[self::TYPE] = $this->settings_obj->get(OPENGRAPH_META_VAR_CONTENT_TYPE_.$node->type,'');
 
@@ -294,10 +294,10 @@ class OpenGraphMeta {
   public function harvest_images_from_node($node) {
     // extract image fields
     $ret = array();
-    $this->_extract_image_fields_from_node((array)$node, $ret);
+    OpenGraphMetaDrupalLayer::extract_image_fields((array)$node, $ret);
 
     // extract all images from body content
-    $body = $this->get_node_body($node);
+    $body = OpenGraphMetaDrupalLayer::get_node_body($node);
     if (!empty($body)) {
       libxml_use_internal_errors(TRUE); // turn off libxml errors for now
       $doc = new DOMDocument();
@@ -318,46 +318,6 @@ class OpenGraphMeta {
     return $ret;
   }
 
-  /**
-   * Helper to harvest_images_from_node().
-   *
-   * array_walk_recursive() doesn't give us enough flexibility so we do the recursion manually.
-   */
-  private function _extract_image_fields_from_node($val, array &$resultarray) {
-    if (is_array($val)) {
-      if (!empty($val['filemime']) && FALSE !== stripos($val['filemime'], 'image') && !empty($val['uri'])) {
-        $url = image_style_url('thumbnail', $val['uri']);
-        array_push($resultarray, array(
-          'title' => !empty($val['title']) ? $val['title'] : $url,
-          'alt' => !empty($val['alt']) ? $val['alt'] : $url,
-          'url' => $url,
-        ));
-      }
-      else {
-        foreach ($val as $cv) {
-          $this->_extract_image_fields_from_node($cv, $resultarray);
-        }
-      }
-    }
-  }
-
-  /**
-   * Get contents of node body.
-   * @param  $node the node object.
-   * @return empty string if no body found.
-   */
-  private function get_node_body($node) {
-    $lang = field_language('node', $node, 'body');
-    if (
-        !empty($node) &&
-        !empty($node->body) &&
-        !empty($node->body[$lang]) &&
-        !empty($node->body[$lang]['0']) &&
-        !empty($node->body[$lang]['0']['value'])
-      )
-          return $node->body[$lang]['0']['value'];
-    return '';
-  }
 
   /**
    * Log a warning message.
@@ -525,6 +485,68 @@ class OpenGraphMetaDrupalLayer {
         variable_set(OPENGRAPH_META_VAR_CONTENT_TYPE_.$type_id, $form_values['types'][OPENGRAPH_META_VAR_CONTENT_TYPE_.$type_id]);
     }
   }
+
+
+  /**
+   * Get contents of node body.
+   * @param  $node the node object.
+   * @return empty string if no body found.
+   */
+  public static function get_node_body($node) {
+    switch (OPENGRAPH_META_DRUPAL_VERSION) {
+      case 6:
+        if (!empty($node->body))
+          return $node->body;
+        break;
+      case 7:
+      case 8:
+        $lang = field_language('node', $node, 'body');
+        if (
+            !empty($node) &&
+            !empty($node->body) &&
+            !empty($node->body[$lang]) &&
+            !empty($node->body[$lang]['0']) &&
+            !empty($node->body[$lang]['0']['value'])
+          )
+              return $node->body[$lang]['0']['value'];
+        break;
+    }
+    return '';
+  }
+
+
+  /**
+   * Harvest images from node's image fields.
+   *
+   * array_walk_recursive() doesn't give us enough flexibility so we do the recursion manually.
+   *
+   * @param $resultarray will hold results.
+   */
+  public static function extract_image_fields($fields, array &$resultarray) {
+    $_uri_field = 'uri';
+    if (6 == OPENGRAPH_META_DRUPAL_VERSION)
+      $_uri_field = 'filepath';
+
+    if (is_array($fields)) {
+      if (!empty($fields['filemime']) && FALSE !== stripos($fields['filemime'], 'image') && !empty($fields[$_uri_field])) {
+        $url = $fields[$_uri_field];
+        if (7 <= OPENGRAPH_META_DRUPAL_VERSION)
+          $url = image_style_url('thumbnail', $fields[$_uri_field]);
+
+        array_push($resultarray, array(
+          'title' => !empty($fields['title']) ? $fields['title'] : $url,
+          'alt' => !empty($fields['alt']) ? $fields['alt'] : $url,
+          'url' => $url,
+        ));
+      }
+      else {
+        foreach ($fields as $cv) {
+          self::extract_image_fields($cv, $resultarray);
+        }
+      }
+    }
+  }
+
 
   /**
    * Log a watchdog error related to the Drupal compatibility layer.
