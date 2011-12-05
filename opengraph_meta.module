@@ -6,7 +6,6 @@ require_once('opengraph_meta.common.inc');
 define('OPENGRAPH_META_MENU_ADMIN','admin/config/content/opengraph_meta');
 
 
-
 /**
  * Implements hook_permission().
  */

@@ -14,6 +14,9 @@ define('OPENGRAPH_META_VAR_FALLBACK_IMG', 'opengraph_meta_fallback_img');
 define('OPENGRAPH_META_VAR_OPTIONAL_TAGS', 'opengraph_meta_optional_tags');
 
 
+define('OPENGRAPH_META_DRUPAL_VERSION', intval(substr(DRUPAL_CORE_COMPATIBILITY,0,1)));
+
+
 
 class OpenGraphMeta {
 
@@ -48,6 +51,12 @@ class OpenGraphMeta {
   private $settings_obj = NULL;
   private $render_obj = NULL;
   private $data_obj = NULL;
+
+  /**
+   * @var array Keep track of which meta tags have already been written to output so that we don't write them again.
+   * This is handy when we're outputting multiples nodes to a single page view.
+   */
+  private $tags_already_output = array();
 
   /**
    * Constructor
@@ -241,7 +250,15 @@ class OpenGraphMeta {
     // fallback values in case no values set.
     $allfields = $this->get_og_tag_defaults($node, TRUE);
     foreach ($allfields as $field => $_d) {
+
+      // already written this meta tag to output?
+      if (array_key_exists($field, $this->tags_already_output)) {
+        $this->warn(t("Already output og:%s",array('%s' => $field)));
+        continue;
+      }
+
       $v = !empty($opengraph_data[$field]) ? $opengraph_data[$field] : $_d;
+
       if (!empty($v)) {
         switch ($field) {
           case self::IMAGE:
@@ -261,7 +278,10 @@ class OpenGraphMeta {
             break;
         }
         $this->render_obj->add_meta('og:'.$field, $v);
+        $this->tags_already_output[$field] = true;
+
       } // if value available for field
+
     } // for each field
   }
 
@@ -339,7 +359,14 @@ class OpenGraphMeta {
     return '';
   }
 
-
+  /**
+   * Log a warning message.
+   * @param $msg the message.
+   */
+  public function warn($msg) {
+    watchdog('opengraph_meta', $msg, array(), WATCHDOG_WARNING);
+  }
+  
   /**
    * FOR TESTING PURPOSES ONLY!
    * Replace the internally used data and config instances with the given ones.
@@ -384,14 +411,7 @@ interface OGMRender {
 /** Implementation which uses Drupal's methods to affect current page output. */
 class OGMDrupalRender implements OGMRender {
   public function add_meta($name, $content) {
-    $element = array(
-      '#tag' => 'meta',
-      '#attributes' => array(
-        'property' => $name,
-        'content' => $content,
-      ),
-    );
-    drupal_add_html_head($element, "opengraph_meta_$name");
+    OpenGraphMetaDrupalLayer::render_meta_tag($name, $content);
   }
 }
 
@@ -432,5 +452,87 @@ class OGMDrupalData implements OGMData {
     $field_data_including_nid->$optional_db_field_name = $optionals;
 
     drupal_write_record(OPENGRAPH_META_TABLE, $field_data_including_nid, $primary_key);
+  }
+}
+
+
+
+/**
+ * Drupal compatibility layer.
+ *
+ * Abstracts away differences between Drupal versions.
+ */
+class OpenGraphMetaDrupalLayer {
+  private function __construct() {}
+
+
+  /** Get all available node content types. */
+  public static function get_node_types() {
+    switch (OPENGRAPH_META_DRUPAL_VERSION) {
+      case 6:
+        return node_get_types();
+        break;
+      case 7:
+      case 8:
+        return node_type_get_types();
+        break;
+      default:
+        self::err('No API for fetching node types found.');
+        return array();
+    }
+  }
+
+  /** Render given META tag to HTML output. */
+  public static function render_meta_tag($name, $content) {
+    switch (OPENGRAPH_META_DRUPAL_VERSION) {
+      case 6:
+        drupal_set_html_head("<meta property=\"$name\" content=\"{$content}\" />");
+        break;
+      case 7:
+      case 8:
+        $element = array(
+          '#tag' => 'meta',
+          '#attributes' => array(
+            'property' => $name,
+            'content' => $content,
+          ),
+        );
+        drupal_add_html_head($element, "opengraph_meta_$name");
+        break;
+      default:
+        self::err('No API for rendering META tags.');
+    }
+  }
+
+
+  /**
+   * Update the default og:type value for the given node type.
+   *
+   * Helper to admin settings form.
+   *
+   * @static
+   * @param $type_id
+   * @param $form_values
+   * @return void
+   */
+  public static function update_default_ogtype_for_node_type($type_id, $form_values) {
+    switch (OPENGRAPH_META_DRUPAL_VERSION) {
+      case 6:
+        // CCK only relevant in Drupal 6
+        variable_set(OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$type_id, $form_values['description_cck'][OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$type_id]);
+      case 7:
+      case 8:
+        variable_set(OPENGRAPH_META_VAR_CONTENT_TYPE_.$type_id, $form_values['types'][OPENGRAPH_META_VAR_CONTENT_TYPE_.$type_id]);
+    }
+  }
+
+  /**
+   * Log a watchdog error related to the Drupal compatibility layer.
+   * @static
+   * @param $msg
+   * @return void
+   */
+  private static function err($msg) {
+    watchdog('opengraph_meta', '%class: %msg', array('%class' => __CLASS__, '%msg' => $msg), WATCHDOG_ERROR);
   }
 }
