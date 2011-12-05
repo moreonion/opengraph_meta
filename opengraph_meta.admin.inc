@@ -8,7 +8,7 @@ require_once('opengraph_meta.common.inc');
  */
 function opengraph_meta_settings_form() {
 
-  $types = node_get_types();
+  $types = OpenGraphMetaDrupalLayer::get_node_types();
 
   $type_options = array();
   foreach ($types as $id => $data) {
@@ -58,8 +58,8 @@ function opengraph_meta_settings_form() {
     );
   }
 
-  // if CCK text fields enabled
-  if (module_exists('text')) {
+  // For Drupal 6, if CCK text fields enabled
+  if (6 === OPENGRAPH_META_DRUPAL_VERSION && module_exists('text')) {
     $form['defaults']['description_cck'] = array(
       '#type' => 'fieldset',
       '#title' => t('How to generate og:description for each content type'),
@@ -137,16 +137,9 @@ function opengraph_meta_settings_form_submit($form, &$form_state) {
   variable_set(OPENGRAPH_META_VAR_CONTENT_TYPES_ENABLED, $values[OPENGRAPH_META_VAR_CONTENT_TYPES_ENABLED]);
 
   // save og:type for each content type
-  $types = node_get_types();
+  $types = OpenGraphMetaDrupalLayer::get_node_types();
   foreach ($types as $id => $data) {
-
-    $content_type_id = OPENGRAPH_META_VAR_CONTENT_TYPE_.$id;
-    if (array_key_exists($content_type_id, $values['types']))
-      variable_set(OPENGRAPH_META_VAR_CONTENT_TYPE_.$id, $values['types'][OPENGRAPH_META_VAR_CONTENT_TYPE_.$id]);
-
-    $cck_content_type_id = OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$id;
-    if (array_key_exists($cck_content_type_id, $values['description_cck']))
-      variable_set(OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$id, $values['description_cck'][OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$id]);
+    OpenGraphMetaDrupalLayer::update_default_ogtype_for_node_type($id, $values);
   }
 
   // save other vars
@@ -166,3 +159,6 @@ function opengraph_meta_settings_form_submit($form, &$form_state) {
   // success
   drupal_set_message("All Open Graph Meta Tags options have been updated");
 }
+
+
+

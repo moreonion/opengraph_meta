@@ -3,17 +3,8 @@
 require_once('opengraph_meta.common.inc');
 
 
-define('OPENGRAPH_META_MENU_ADMIN','admin/content/opengraph_meta');
-define('OPENGRAPH_META_MENU_ADMIN_SETTINGS',OPENGRAPH_META_MENU_ADMIN.'/settings');
+define('OPENGRAPH_META_MENU_ADMIN','admin/config/content/opengraph_meta');
 
-
-
-/**
- * Implements hook_perm().
- */
-function opengraph_meta_perm() {
-  return array(OPENGRAPH_META_PERM_ADMIN, OPENGRAPH_META_PERM_EDIT);
-}
 
 
 /**
@@ -28,16 +19,20 @@ function opengraph_meta_menu() {
     'page arguments' => array('opengraph_meta_settings_form'),
     'description' => 'Configure meta tags for Facebook sharing.',
     'access arguments' => $admin_access,
-    'type' => MENU_NORMAL_ITEM,
     'file' => 'opengraph_meta.admin.inc',
+    'menu_name' => 'management',
   );
-  $items[OPENGRAPH_META_MENU_ADMIN_SETTINGS] = array(
-    'title' => 'Settings',
-    'access arguments' => $admin_access,
-    'type' => MENU_DEFAULT_LOCAL_TASK,
-    'weight' => -1,
-    'file' => 'opengraph_meta.admin.inc',
-  );
+
+  if (6 == OPENGRAPH_META_DRUPAL_VERSION) {
+    $items[OPENGRAPH_META_MENU_ADMIN]['type'] = MENU_NORMAL_ITEM;
+    $items[rtrim(OPENGRAPH_META_MENU_ADMIN,'/').'/settings'] = array(
+      'title' => 'Settings',
+      'access arguments' => $admin_access,
+      'type' => MENU_DEFAULT_LOCAL_TASK,
+      'weight' => -1,
+      'file' => 'opengraph_meta.admin.inc',
+    );
+  }
 
   return $items;
 }
@@ -111,12 +106,11 @@ function opengraph_meta_form_alter(&$form, $form_state, $form_id) {
     $form['opengraph_meta']['contact'] = array_merge($form['opengraph_meta']['contact'], _opengraph_meta_contact_form_fields($node));
 
     // if we have images in this node then show thumbnail selector
-    $image_paths = OpenGraphMeta::instance()->harvest_images_from_node($node);
-    if (!empty($image_paths)) {
+    $images = OpenGraphMeta::instance()->harvest_images_from_node($node);
+    if (!empty($images)) {
       $image_selector_options = array();
-      foreach ($image_paths as $path) {
-        $abs_path = url(ltrim($path,'/'));
-        $image_selector_options[$path] = "<img src=\"$abs_path\" alt=\"$path\" title=\"$path\" width=\"32px\" height=\"32px\" class=\"opengraph-thumb\" />";
+      foreach ($images as $image) {
+        $image_selector_options[$image['url']] = OpenGraphMetaDrupalLayer::theme_selector_image($image);
       }
       $form['opengraph_meta'][OpenGraphMeta::IMAGE] = array(
         '#title' => t('Thumbnail image'),
@@ -190,33 +184,8 @@ function _opengraph_meta_contact_form_fields($node = NULL) {
 
 
 
-
-/**
- * Implements hook_nodeapi().
- */
-function opengraph_meta_nodeapi(&$node, $op, $teaser = NULL, $page = NULL) {
-  switch ($op) {
-    case 'delete':
-      OpenGraphMeta::instance()->delete_node_data($node->nid);
-      break;
-    case 'insert':
-    case 'update':
-      if (!empty($node->opengraph_meta)) {
-        OpenGraphMeta::instance()->save_node_data($node->nid, $node->opengraph_meta);
-      }
-      break;
-    case 'load':
-      if (OpenGraphMeta::instance()->tags_are_enabled_for_content_type($node->type)) {
-        return array('opengraph_meta' => OpenGraphMeta::instance()->load_node_data($node));
-      }
-      break;
-    case 'view':
-      // only show meta tags if viewing full node as a page
-      if (NODE_BUILD_NORMAL == $node->build_mode && !$teaser && $page && !empty($node->opengraph_meta))
-        OpenGraphMeta::instance()->render_data($node, $node->opengraph_meta);
-  }
+if (6 == OPENGRAPH_META_DRUPAL_VERSION) {
+  require_once 'opengraph_meta.drupal6-hooks.inc';
+} else {
+  require_once 'opengraph_meta.drupal7-hooks.inc';
 }
-
-
-
-

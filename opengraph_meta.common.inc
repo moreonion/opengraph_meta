@@ -14,6 +14,9 @@ define('OPENGRAPH_META_VAR_FALLBACK_IMG', 'opengraph_meta_fallback_img');
 define('OPENGRAPH_META_VAR_OPTIONAL_TAGS', 'opengraph_meta_optional_tags');
 
 
+define('OPENGRAPH_META_DRUPAL_VERSION', intval(substr(DRUPAL_CORE_COMPATIBILITY,0,1)));
+
+
 
 class OpenGraphMeta {
 
@@ -131,30 +134,16 @@ class OpenGraphMeta {
     if (!empty($node)) {
       // if node given then override defaults
       $ret[self::TITLE] = $full_view ? drupal_get_title() : $node->title;
-
-      $description = '';
-
-      // check if we have an alternative field from which to grab description.
-      $description_cck_field = variable_get(OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$node->type, '');
-      if (!empty($description_cck_field) && !empty($node->$description_cck_field)) {
-        $v = $node->$description_cck_field;
-        if (is_array($v[0]) && !empty($v[0]['value'])) {
-          $description = $v[0]['value'];
-        }
-      }
-      // fall back to body and title
-      if (empty($description))
-        $description = !empty($node->body) ? $node->body : $node->title;
-
-      $ret[self::DESCRIPTION] = mb_substr(strip_tags($description),0,200);
-
-      
+      $body = OpenGraphMetaDrupalLayer::get_node_body($node);
+      $ret[self::DESCRIPTION] = !empty($body) ? mb_substr(strip_tags($body),0,200) : $node->title;
       $ret[self::TYPE] = $this->settings_obj->get(OPENGRAPH_META_VAR_CONTENT_TYPE_.$node->type,'');
 
-      $image_paths = $this->harvest_images_from_node($node);
-      if (!empty($image_paths))
-        $ret[self::IMAGE] = array_shift($image_paths);
-      
+      $images = $this->harvest_images_from_node($node);
+      if (!empty($images)) {
+        $i = array_shift($images);
+        $ret[self::IMAGE] = $i['url'];
+      }
+
       $ret[self::URL] = url(drupal_get_path_alias('node/'.$node->nid),array('absolute' => TRUE));
     }
 
@@ -300,25 +289,27 @@ class OpenGraphMeta {
   /**
    * Harvest all images from the given node.
    *
-   * @return array(image URl)
+   * @return array(array('title' => , 'alt' => , 'url' =>))
    */
   public function harvest_images_from_node($node) {
     // extract image fields
     $ret = array();
-    $this->_extract_image_fields_from_node((array)$node, $ret);
+    OpenGraphMetaDrupalLayer::extract_image_fields((array)$node, $ret);
 
     // extract all images from body content
-    if (!empty($node->body)) {
+    $body = OpenGraphMetaDrupalLayer::get_node_body($node);
+    if (!empty($body)) {
       libxml_use_internal_errors(TRUE); // turn off libxml errors for now
       $doc = new DOMDocument();
-      $doc->loadHTML($node->body);
+      $doc->loadHTML($body);
       $list = $doc->getElementsByTagName('img');
       for ($i=0; $list->length > $i; ++$i) {
         $item = $list->item($i);
         if ($item->hasAttribute('src')) {
-          $attrval = $item->getAttribute('src');
-          if (!empty($attrval))
-            $ret[] = $attrval;
+          $url = $item->getAttribute('src');
+          if (!empty($url)) {
+            $ret[] = array('title' => $url, 'alt' => $url, 'url' => $url);
+          }
         }
       }
       libxml_use_internal_errors(FALSE); // turn libxml errors back on
@@ -327,23 +318,6 @@ class OpenGraphMeta {
     return $ret;
   }
 
-  /**
-   * Helper to harvest_images_from_node().
-   *
-   * array_walk_recursive() doesn't give us enough flexibility so we do the recursion manually.
-   */
-  private function _extract_image_fields_from_node($val, array &$resultarray) {
-    if (is_array($val)) {
-      if (!empty($val['filemime']) && FALSE !== stripos($val['filemime'], 'image') && !empty($val['filepath'])) {
-        array_push($resultarray, $val['filepath']);
-      }
-      else {
-        foreach ($val as $cv) {
-          $this->_extract_image_fields_from_node($cv, $resultarray);
-        }
-      }
-    }
-  }
 
   /**
    * Log a warning message.
@@ -352,6 +326,7 @@ class OpenGraphMeta {
   public function warn($msg) {
     watchdog('opengraph_meta', $msg, array(), WATCHDOG_WARNING);
   }
+  
 
   /**
    * FOR TESTING PURPOSES ONLY!
@@ -397,7 +372,7 @@ interface OGMRender {
 /** Implementation which uses Drupal's methods to affect current page output. */
 class OGMDrupalRender implements OGMRender {
   public function add_meta($name, $content) {
-    drupal_set_html_head("<meta property=\"$name\" content=\"{$content}\" />");    
+    OpenGraphMetaDrupalLayer::render_meta_tag($name, $content);
   }
 }
 
@@ -410,7 +385,7 @@ interface OGMData {
 }
 class OGMDrupalData implements OGMData {
   public function load_tags($nid) {
-    $ret = db_fetch_object(db_query("SELECT * FROM {".OPENGRAPH_META_TABLE."} WHERE nid = %d", $nid));
+    $ret = OpenGraphMetaDrupalLayer::load_tags($nid);
     if (!empty($ret)) {
       // get optional field value as array
       $optional_db_field_name = OpenGraphMeta::__OPTIONAL_DB_FIELD;
@@ -423,7 +398,7 @@ class OGMDrupalData implements OGMData {
     return $ret;
   }
   public function delete_tags($nid) {
-    db_query("DELETE FROM {".OPENGRAPH_META_TABLE."} WHERE nid = %d", $nid);
+    OpenGraphMetaDrupalLayer::delete_tags($nid);
   }
   public function update_tags($field_data_including_nid, $primary_key = array()) {
     // push optional fields into special db field
@@ -437,5 +412,218 @@ class OGMDrupalData implements OGMData {
     $field_data_including_nid->$optional_db_field_name = $optionals;
 
     drupal_write_record(OPENGRAPH_META_TABLE, $field_data_including_nid, $primary_key);
+  }
+}
+
+
+
+/**
+ * Drupal compatibility layer.
+ *
+ * Abstracts away differences between Drupal versions.
+ */
+class OpenGraphMetaDrupalLayer {
+  private function __construct() {}
+
+
+  /** Get all available node content types. */
+  public static function get_node_types() {
+    switch (OPENGRAPH_META_DRUPAL_VERSION) {
+      case 6:
+        return node_get_types();
+        break;
+      case 7:
+      case 8:
+        return node_type_get_types();
+        break;
+      default:
+        self::err('No API for fetching node types found.');
+        return array();
+    }
+  }
+
+  /** Render given META tag to HTML output. */
+  public static function render_meta_tag($name, $content) {
+    switch (OPENGRAPH_META_DRUPAL_VERSION) {
+      case 6:
+        drupal_set_html_head("<meta property=\"$name\" content=\"{$content}\" />");
+        break;
+      case 7:
+      case 8:
+        $element = array(
+          '#tag' => 'meta',
+          '#attributes' => array(
+            'property' => $name,
+            'content' => $content,
+          ),
+        );
+        drupal_add_html_head($element, "opengraph_meta_$name");
+        break;
+      default:
+        self::err('No API for rendering META tags.');
+    }
+  }
+
+
+  /**
+   * Update the default og:type value for the given node type.
+   *
+   * Helper to admin settings form.
+   *
+   * @static
+   * @param $type_id
+   * @param $form_values
+   * @return void
+   */
+  public static function update_default_ogtype_for_node_type($type_id, $form_values) {
+    switch (OPENGRAPH_META_DRUPAL_VERSION) {
+      case 6:
+        $cck_content_type_id = OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$type_id;
+        if (array_key_exists($cck_content_type_id, $form_values['description_cck']))
+          variable_set($cck_content_type_id, $form_values['description_cck'][$cck_content_type_id]);
+      default:
+        $content_type_id = OPENGRAPH_META_VAR_CONTENT_TYPE_.$type_id;
+        if (array_key_exists($content_type_id, $form_values['types']))
+          variable_set($content_type_id, $form_values['types'][$content_type_id]);
+    }
+  }
+
+
+  /**
+   * Get contents of node body.
+   * @param  $node the node object.
+   * @return empty string if no body found.
+   */
+  public static function get_node_body($node) {
+    $body = '';
+
+    switch (OPENGRAPH_META_DRUPAL_VERSION) {
+      case 6:
+        // check if we have an alternative field from which to grab description.
+        $description_cck_field = variable_get(OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$node->type, '');
+        if (!empty($description_cck_field) && !empty($node->$description_cck_field)) {
+          $v = $node->$description_cck_field;
+          if (is_array($v[0]) && !empty($v[0]['value']))
+            $body = $v[0]['value'];
+        }
+
+        if (empty($body) && !empty($node->body))
+          $body = $node->body;
+        break;
+      default:
+        $lang = field_language('node', $node, 'body');
+        if (
+            !empty($node) &&
+            !empty($node->body) &&
+            !empty($node->body[$lang]) &&
+            !empty($node->body[$lang]['0']) &&
+            !empty($node->body[$lang]['0']['value'])
+          )
+              $body = $node->body[$lang]['0']['value'];
+        break;
+    }
+    return $body;
+  }
+
+
+  /**
+   * Harvest images from node's image fields.
+   *
+   * array_walk_recursive() doesn't give us enough flexibility so we do the recursion manually.
+   *
+   * @param $resultarray will hold results.
+   */
+  public static function extract_image_fields($fields, array &$resultarray) {
+    $_uri_field = 'uri';
+    if (6 == OPENGRAPH_META_DRUPAL_VERSION)
+      $_uri_field = 'filepath';
+
+    if (is_array($fields)) {
+      if (!empty($fields['filemime']) && FALSE !== stripos($fields['filemime'], 'image') && !empty($fields[$_uri_field])) {
+        $url = $fields[$_uri_field];
+        if (7 <= OPENGRAPH_META_DRUPAL_VERSION)
+          $url = image_style_url('thumbnail', $fields[$_uri_field]);
+
+        array_push($resultarray, array(
+          'title' => !empty($fields['title']) ? $fields['title'] : $url,
+          'alt' => !empty($fields['alt']) ? $fields['alt'] : $url,
+          'url' => $url,
+        ));
+      }
+      else {
+        foreach ($fields as $cv) {
+          self::extract_image_fields($cv, $resultarray);
+        }
+      }
+    }
+  }
+
+
+  /** Get rendered IMG tag for the OGMT node image selector. */
+  public static function theme_selector_image($image) {
+    $attributes = array('class' => 'opengraph-thumb');
+    switch (OPENGRAPH_META_DRUPAL_VERSION) {
+      case 6:
+        $abs_path = url(ltrim($image['url'],'/'),
+          array(
+            'absolute' => TRUE
+          )
+        );
+        return theme('image', $abs_path, $image['alt'], $image['title'],
+            array_merge($attributes, array('width' => '32px', 'height' => '32px')), FALSE);
+        break;
+      case 7:
+      case 8:
+        return theme('image',
+          array(
+               'path' => $image['url'],
+               'alt' => $image['alt'],
+               'height' => '60px',
+               'attributes' => array_merge($attributes, array('title' => $image['title']))
+          )
+        );
+        break;
+      default:
+        self::err('No API for theming images');
+        return '';
+    }
+  }
+
+  /** Delete OGM tags for given node. */
+  public static function delete_tags($nid) {
+    switch (OPENGRAPH_META_DRUPAL_VERSION) {
+      case 6:
+        db_query("DELETE FROM {".OPENGRAPH_META_TABLE."} WHERE nid = %d", $nid);
+        break;
+      default:
+        db_query("DELETE FROM {".OPENGRAPH_META_TABLE."} WHERE nid = :nid", array(':nid' => $nid));
+    }
+  }
+
+
+  /** Load OGM tags for given node. */
+  public static function load_tags($nid) {
+    switch (OPENGRAPH_META_DRUPAL_VERSION) {
+      case 6:
+        return db_fetch_object(db_query("SELECT * FROM {".OPENGRAPH_META_TABLE."} WHERE nid = %d", $nid));
+        break;
+      default:
+        $result = db_query("SELECT * FROM {".OPENGRAPH_META_TABLE."} WHERE nid = :nid", array(':nid' => $nid));
+        if (0 >= $result->rowCount())
+          return FALSE;
+        return $result->fetchObject();
+    }
+  }
+
+
+
+  /**
+   * Log a watchdog error related to the Drupal compatibility layer.
+   * @static
+   * @param $msg
+   * @return void
+   */
+  private static function err($msg) {
+    watchdog('opengraph_meta', '%class: %msg', array('%class' => __CLASS__, '%msg' => $msg), WATCHDOG_ERROR);
   }
 }
