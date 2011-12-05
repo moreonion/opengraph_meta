@@ -58,6 +58,40 @@ function opengraph_meta_settings_form() {
     );
   }
 
+  // For Drupal 6, if CCK text fields enabled
+  if ('6' === substr(DRUPAL_CORE_COMPATIBILITY,0,1) && module_exists('text')) {
+    $form['defaults']['description_cck'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('How to generate og:description for each content type'),
+      '#description' => t('By default a node\'s %field field is used to auto-generate the value of the %tag tag. Here you can opt for a different CCK text field to be used instead. Note that only content types with extra CCK text fields will be shown here.',array('%field' => 'body', '%tag' => 'og:description')),
+      '#tree' => TRUE,
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+    );
+    $content_type_info = _content_type_info();
+    foreach ($content_type_info['content types'] as $ct_id => $ct_data) {
+      // if we have field info for this content type
+      if (isset($content_type_info['content types'][$ct_id]['fields'])) {
+        $fields = $content_type_info['content types'][$ct_id]['fields'];
+        $options = array();
+        foreach ($fields as $field_name => $field_info) {
+          if ('text' == $field_info['widget']['module'])
+            $options[$field_name] = $field_info['widget']['label'];
+        }
+        if (!empty($options)) {
+          $options = array('' => '') + $options;
+          $form['defaults']['description_cck'][OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$ct_id] = array(
+            '#title' => $ct_data['name'],
+            '#type' => 'select',
+            '#options' => $options,
+            '#description' => t('The value for the %tag tag for nodes of type %type. If left unset then the %default field will be used.',array('%tag' => 'og:description', '%type' => $ct_data['name'], '%default' => 'body')),
+            '#default_value' => variable_get(OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$ct_id, ''),
+          );
+        }
+      }
+    }
+  }
+
   // optional tags defaults
   $optionals = new stdClass();
   $optionals->opengraph_meta = variable_get(OPENGRAPH_META_VAR_OPTIONAL_TAGS, array());
@@ -106,6 +140,7 @@ function opengraph_meta_settings_form_submit($form, &$form_state) {
   $types = node_type_get_types();
   foreach ($types as $id => $data) {
     variable_set(OPENGRAPH_META_VAR_CONTENT_TYPE_.$id, $values['types'][OPENGRAPH_META_VAR_CONTENT_TYPE_.$id]);
+    variable_set(OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$id, $values['description_cck'][OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$id]);
   }
 
   // save other vars

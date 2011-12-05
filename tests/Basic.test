@@ -106,11 +106,13 @@ class OGMTBasicTest extends DrupalTestCase {
       OpenGraphMeta::IMAGE => '',
       OpenGraphMeta::TYPE => '',
     ));
+    drupal_set_title($node->title);
     $this->ogm->render_data($node, $this->ogm->load_node_data($node));
     $this->_check_rendered_meta_tags(array(
       'og:'.OpenGraphMeta::TITLE => $node->title,
       'og:'.OpenGraphMeta::DESCRIPTION => mb_substr(strip_tags($node->body),0,200),
       'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
+      'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
     ));
 
     // non-empty values but using default type value
@@ -129,6 +131,7 @@ class OGMTBasicTest extends DrupalTestCase {
       'og:'.OpenGraphMeta::IMAGE => url('test.jpg', array('absolute' => TRUE)),      
       'og:'.OpenGraphMeta::TYPE => 'product',      
       'og:'.OpenGraphMeta::SITE_NAME => 'TestSite',
+      'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
     ));
 
     // non-empty values including type override
@@ -147,6 +150,7 @@ class OGMTBasicTest extends DrupalTestCase {
       'og:'.OpenGraphMeta::IMAGE => url('test2.jpg', array('absolute' => TRUE)),
       'og:'.OpenGraphMeta::TYPE => 'pixies',
       'og:'.OpenGraphMeta::SITE_NAME => 'TestSite2',
+      'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
     ));
   }
 
@@ -162,7 +166,15 @@ class OGMTBasicTest extends DrupalTestCase {
 
   private function _check_rendered_meta_tags(array $expected) {
     $diff = array_diff_assoc($this->ogm_render->meta, $expected);
-    $this->assertTrue(empty($diff));
+
+    $str = 'Difference: ';
+    foreach ($diff as $k => $v) {
+      $str .= $k .' => '. $v.', ';
+    }
+
+    $result = empty($diff);
+
+    $this->assertTrue($result, $result ? NULL : $str);
   }
 }
 

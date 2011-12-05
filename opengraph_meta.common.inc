@@ -7,6 +7,7 @@ define('OPENGRAPH_META_PERM_EDIT', 'edit Open Graph meta tags');
 
 define('OPENGRAPH_META_VAR_CONTENT_TYPES_ENABLED', 'opengraph_meta_types_enabled');
 define('OPENGRAPH_META_VAR_CONTENT_TYPE_', 'opengraph_meta_type_');
+define('OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_', 'opengraph_meta_cck_');
 define('OPENGRAPH_META_VAR_SITE_NAME', 'opengraph_meta_site_name');
 define('OPENGRAPH_META_VAR_FALLBACK_IMG', 'opengraph_meta_fallback_img');
 
@@ -60,9 +61,9 @@ class OpenGraphMeta {
   /** Get singleton instance. */
   public static function instance() {
     if (empty(self::$instance)) {
-      $instance = new OpenGraphMeta();
+      self::$instance = new OpenGraphMeta();
     }
-    return $instance;
+    return self::$instance;
   }
 
 
@@ -123,7 +124,7 @@ class OpenGraphMeta {
 
     if (!empty($node)) {
       // if node given then override defaults
-      $ret[self::TITLE] = $node->title;
+      $ret[self::TITLE] = $full_view ? drupal_get_title() : $node->title;
       $body = $this->get_node_body($node);
       $ret[self::DESCRIPTION] = !empty($body) ? mb_substr(strip_tags($body),0,200) : $node->title;
       $ret[self::TYPE] = $this->settings_obj->get(OPENGRAPH_META_VAR_CONTENT_TYPE_.$node->type,'');
