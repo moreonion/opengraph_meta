@@ -31,6 +31,7 @@ class OGMTBasicTest extends DrupalTestCase {
     $this->ogm_render = new OGMTestRender();
     $this->ogm_objects_backup = $this->ogm->__get_objects();
     $this->ogm->__set_objects($this->ogm_data, $this->ogm_settings, $this->ogm_render);
+    $this->ogm->__reset_tags_already_output();
   }
 
   function tearDown() {
@@ -104,6 +105,42 @@ class OGMTBasicTest extends DrupalTestCase {
     // check that saved ok
     $this->_check_saved_tags_for_node(1, $data);
   }
+
+
+  function testMetaTagsOnlyGetOutputOnce() {
+
+    /*
+     * Even if we're processing multiple nodes for a given page we should only output each meta tag once to avoid
+     * issues with browsers refusing to accept duplicate tags.
+     */
+
+    $node = $this->_build_test_node(1);
+    $this->ogm->save_node_data(1, array(
+      OpenGraphMeta::TITLE => 'blat',
+      OpenGraphMeta::DESCRIPTION => 'blad',
+    ));
+    $this->ogm->render_data($node, $this->ogm->load_node_data($node));
+    $this->_check_rendered_meta_tags(array(
+      'og:'.OpenGraphMeta::TITLE => 'blat',
+      'og:'.OpenGraphMeta::DESCRIPTION => 'blad',
+      'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
+      'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
+    ));
+    // now repeat
+    $node2 = $this->_build_test_node(2);
+    $this->ogm->save_node_data(2, array(
+      OpenGraphMeta::TITLE => 'blat2',
+      OpenGraphMeta::DESCRIPTION => 'blad2',
+    ));
+    $this->ogm->render_data($node2, $this->ogm->load_node_data($node2));
+    $this->_check_rendered_meta_tags(array(
+      'og:'.OpenGraphMeta::TITLE => 'blat',
+      'og:'.OpenGraphMeta::DESCRIPTION => 'blad',
+      'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
+      'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
+    ));
+  }
+
 
 
 
@@ -187,39 +224,46 @@ class OGMTBasicTest extends DrupalTestCase {
   }
 
 
-  function testMetaTagsOnlyGetOutputOnce() {
+
+  function testNodeOverrideDefaultImage() {
 
     /*
-     * Even if we're processing multiple nodes for a given page we should only output each meta tag once to avoid
-     * issues with browsers refusing to accept duplicate tags.
+     * Ensure that node image is used instead of global fallback image when no row is present for the node in
+     * the OG meta tags table.
      */
 
+    // empty node values
+    // Important: there is no row in the data store!
     $node = $this->_build_test_node(1);
-    $this->ogm->save_node_data(1, array(
-      OpenGraphMeta::TITLE => 'blat',
-      OpenGraphMeta::DESCRIPTION => 'blad',
-    ));
+    $this->ogm_settings->set(OPENGRAPH_META_VAR_CONTENT_TYPE_.'type1','');
+    $this->ogm_settings->set(OPENGRAPH_META_VAR_FALLBACK_IMG, 'default.jpg');
+
+    // Check if the default image is returned when the node does not contain an image
     $this->ogm->render_data($node, $this->ogm->load_node_data($node));
     $this->_check_rendered_meta_tags(array(
-      'og:'.OpenGraphMeta::TITLE => 'blat',
-      'og:'.OpenGraphMeta::DESCRIPTION => 'blad',
+      'og:'.OpenGraphMeta::TITLE => $node->title,
+      'og:'.OpenGraphMeta::DESCRIPTION => mb_substr(strip_tags($node->body),0,200),
       'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
+      'og:'.OpenGraphMeta::IMAGE => url('default.jpg', array('absolute' => TRUE)),
       'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
     ));
-    // now repeat
-    $node2 = $this->_build_test_node(2);
-    $this->ogm->save_node_data(2, array(
-      OpenGraphMeta::TITLE => 'blat2',
-      OpenGraphMeta::DESCRIPTION => 'blad2',
-    ));
-    $this->ogm->render_data($node2, $this->ogm->load_node_data($node2));
+
+    // Add an image to the node
+    $node->field_image = array(
+      'filemime' => 'image/jpeg',
+      'filepath' => 'node.jpg',
+    );
+    $this->ogm->__reset_tags_already_output();
+    $this->ogm->render_data($node, $this->ogm->load_node_data($node));
     $this->_check_rendered_meta_tags(array(
-      'og:'.OpenGraphMeta::TITLE => 'blat',
-      'og:'.OpenGraphMeta::DESCRIPTION => 'blad',
+      'og:'.OpenGraphMeta::TITLE => $node->title,
+      'og:'.OpenGraphMeta::DESCRIPTION => mb_substr(strip_tags($node->body),0,200),
       'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
+      'og:'.OpenGraphMeta::IMAGE => url('node.jpg', array('absolute' => TRUE)),
       'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
     ));
   }
+
 
 
   private function _check_saved_tags_for_node($nid, array $expected) {
@@ -242,7 +286,7 @@ class OGMTBasicTest extends DrupalTestCase {
   }
 
   private function _check_rendered_meta_tags(array $expected) {
-    $diff = array_diff_assoc($this->ogm_render->meta, $expected);
+    $diff = array_diff_assoc($expected, $this->ogm_render->meta) + array_diff_assoc($this->ogm_render->meta, $expected);
 
     $str = 'Difference: ';
     foreach ($diff as $k => $v) {
