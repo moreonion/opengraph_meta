@@ -93,7 +93,7 @@ class OGMTBasicTest extends DrupalTestCase {
     $this->ogm->save_node_data(1,$data);
 
     // check that saved ok
-    $this->_check_saved_tags_for_node(1, $data);
+    $this->_check_saved_tags_for_node(1, $data, __FUNCTION__);
 
     // overwrite
     $data[OpenGraphMeta::TITLE] = 'a2';
@@ -103,7 +103,7 @@ class OGMTBasicTest extends DrupalTestCase {
     $this->ogm->save_node_data(1,$data);
 
     // check that saved ok
-    $this->_check_saved_tags_for_node(1, $data);
+    $this->_check_saved_tags_for_node(1, $data, __FUNCTION__);
   }
 
 
@@ -125,7 +125,7 @@ class OGMTBasicTest extends DrupalTestCase {
       'og:'.OpenGraphMeta::DESCRIPTION => 'blad',
       'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
       'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
-    ));
+    ),__FUNCTION__);
     // now repeat
     $node2 = $this->_build_test_node(2);
     $this->ogm->save_node_data(2, array(
@@ -138,7 +138,7 @@ class OGMTBasicTest extends DrupalTestCase {
       'og:'.OpenGraphMeta::DESCRIPTION => 'blad',
       'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
       'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
-    ));
+    ),__FUNCTION__);
   }
 
 
@@ -166,7 +166,7 @@ class OGMTBasicTest extends DrupalTestCase {
       'og:'.OpenGraphMeta::DESCRIPTION => mb_substr(strip_tags($node->body),0,200),
       'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
       'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
-    ));
+    ),__FUNCTION__);
   }
 
   function testOverridesWithDefaultFallbackValues() {
@@ -193,7 +193,7 @@ class OGMTBasicTest extends DrupalTestCase {
       'og:'.OpenGraphMeta::TYPE => 'product',
       'og:'.OpenGraphMeta::SITE_NAME => 'TestSite',
       'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
-    ));
+    ),__FUNCTION__);
   }
 
   function testOverridesWithNodeSpecificValues() {
@@ -220,7 +220,7 @@ class OGMTBasicTest extends DrupalTestCase {
       'og:'.OpenGraphMeta::TYPE => 'pixies',
       'og:'.OpenGraphMeta::SITE_NAME => 'TestSite2',
       'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
-    ));
+    ),__FUNCTION__);
   }
 
 
@@ -246,7 +246,7 @@ class OGMTBasicTest extends DrupalTestCase {
       'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
       'og:'.OpenGraphMeta::IMAGE => url('default.jpg', array('absolute' => TRUE)),
       'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
-    ));
+    ),__FUNCTION__);
 
     // Add an image to the node
     $node->field_image = array(
@@ -261,16 +261,16 @@ class OGMTBasicTest extends DrupalTestCase {
       'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
       'og:'.OpenGraphMeta::IMAGE => url('node.jpg', array('absolute' => TRUE)),
       'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
-    ));
+    ),__FUNCTION__);
   }
 
 
 
-  private function _check_saved_tags_for_node($nid, array $expected) {
+  private function _check_saved_tags_for_node($nid, array $expected, $msg) {
     $ret = $this->ogm_data->load_tags($nid);
-    $this->assertEqual($ret->nid,$nid);
+    $this->assertEqual($ret->nid,$nid, $msg);
     foreach ($expected as $key => $val) {
-      $this->assertEqual($ret->$key, $val);
+      $this->assertEqual($ret->$key, $val, $msg);
     }
   }
 
@@ -285,7 +285,7 @@ class OGMTBasicTest extends DrupalTestCase {
     return $node;
   }
 
-  private function _check_rendered_meta_tags(array $expected) {
+  private function _check_rendered_meta_tags(array $expected, $msg) {
     $diff = array_diff_assoc($expected, $this->ogm_render->meta) + array_diff_assoc($this->ogm_render->meta, $expected);
 
     $str = 'Difference: ';
@@ -295,7 +295,7 @@ class OGMTBasicTest extends DrupalTestCase {
 
     $result = empty($diff);
 
-    $this->assertTrue($result, $result ? NULL : $str);
+    $this->assertTrue($result, $result ? NULL : "$msg: $str");
   }
 }
 
