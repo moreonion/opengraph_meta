@@ -569,13 +569,13 @@ class OpenGraphMetaDrupalLayer {
   /** Get rendered IMG tag for the OGMT node image selector. */
   public static function theme_selector_image($image) {
     $attributes = array('class' => 'opengraph-thumb');
+    $abs_path = url(ltrim($image['url'],'/'),
+      array(
+        'absolute' => TRUE
+      )
+    );
     switch (OPENGRAPH_META_DRUPAL_VERSION) {
       case 6:
-        $abs_path = url(ltrim($image['url'],'/'),
-          array(
-            'absolute' => TRUE
-          )
-        );
         return theme('image', $abs_path, $image['alt'], $image['title'],
             array_merge($attributes, array('width' => '32px', 'height' => '32px')), FALSE);
         break;
@@ -583,7 +583,7 @@ class OpenGraphMetaDrupalLayer {
       case 8:
         return theme('image',
           array(
-               'path' => $image['url'],
+               'path' => $abs_path,
                'alt' => $image['alt'],
                'height' => '60px',
                'attributes' => array_merge($attributes, array('title' => $image['title']))
