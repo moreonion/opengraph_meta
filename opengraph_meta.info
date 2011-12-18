@@ -6,5 +6,6 @@ core = 7.x
 files[] = opengraph_meta.admin.inc
 files[] = opengraph_meta.common.inc
 files[] = tests/Basic.test
+files[] = tests/Hooks.test
 
 configure = admin/config/content/opengraph_meta
