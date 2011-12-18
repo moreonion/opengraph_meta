@@ -246,7 +246,7 @@ class OpenGraphMeta {
   }
 
   /** Render the meta tag data for the given node. */
-  public function render_data($node, $opengraph_data) {
+  public function render_data(&$node, $opengraph_data) {
     // fallback values in case no values set.
     $allfields = $this->get_og_tag_defaults($node, TRUE);
     foreach ($allfields as $field => $_d) {
@@ -277,6 +277,10 @@ class OpenGraphMeta {
             $v = floatval($v);
             break;
         }
+
+        // allow other people to alter this value
+        $v = OpenGraphMetaDrupalLayer::invoke_filter('og_tag_render_alter', $v, array($node, $field));
+
         $this->render_obj->add_meta('og:'.$field, $v);
         $this->tags_already_output[$field] = true;
 
@@ -620,6 +624,24 @@ class OpenGraphMetaDrupalLayer {
           return FALSE;
         return $result->fetchObject();
     }
+  }
+
+
+  /**
+   * Call given filter on all modules which implement it.
+   *
+   * @params $name filter name.
+   * @param $value initial value.
+   * @param $args additional arguments to pass to each filter.
+   * @return final filtered value.
+   */
+  public static function invoke_filter($name, $value, $args = array()) {
+    array_push($args, $value);
+    $valueIndex = count($args) - 1;
+    foreach (module_implements($name) as $module) {
+       $args[$valueIndex] = call_user_func_array($module . '_' . $name, $args);
+    }
+    return $args[$valueIndex];
   }
 
 

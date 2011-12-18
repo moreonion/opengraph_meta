@@ -1,0 +1,4 @@
+name = Open Graph meta tags test module
+description = This is a dummy module used in automated tests for the opengraph_meta module.
+package = Open Graph
+core = 6.x
