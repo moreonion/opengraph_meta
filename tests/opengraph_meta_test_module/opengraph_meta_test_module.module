@@ -19,6 +19,12 @@ class OpenGraphMetaTestModule {
 
   /**
    * Implements hook_og_tag_render_alter().
+   *
+   * @param $node the node whose tag is being rendered.
+   * @param $name the name of the OG tag being rendered, e.g. title, image.
+   * @param $value the value of the OG tag being rendered.
+   *
+   * @return the altered value to render for the given tag.
    */
   public static function hook_og_tag_render_alter($node, $name, $value) {
     return !empty(self::$og_tag_render_alter[$name]) ? self::$og_tag_render_alter[$name] : $value;
