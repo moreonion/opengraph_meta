@@ -1,0 +1,28 @@
+<?php
+
+
+
+/**
+ * Implements hook_og_tag_render_alter().
+ */
+function opengraph_meta_test_module_og_tag_render_alter() {
+  return call_user_func_array(array('OpenGraphMetaTestModule','hook_og_tag_render_alter'), func_get_args());
+}
+
+
+
+
+
+class OpenGraphMetaTestModule {
+  /** @var array result values for calls to hook_og_tag_render_alter. */
+  public static $og_tag_render_alter = array();
+
+  /**
+   * Implements hook_og_tag_render_alter().
+   */
+  public static function hook_og_tag_render_alter($node, $name, $value) {
+    return !empty(self::$og_tag_render_alter[$name]) ? self::$og_tag_render_alter[$name] : $value;
+  }
+}
+
+
