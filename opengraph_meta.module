@@ -140,11 +140,16 @@ function _opengraph_meta_location_form_fields($node = NULL) {
   $defaults = OpenGraphMeta::instance()->get_og_optional_tag_defaults($node);
 
   foreach ($fields as $f => $i) {
+    $default_value = '';
+    if (!empty($node->opengraph_meta) && !empty($node->opengraph_meta[$f])) {
+      $default_value = $node->opengraph_meta[$f];
+    }
+
     $ret[$f] = array(
       '#title' => t($i[0]),
       '#type' => 'textfield',
       '#maxlength' => 255,
-      '#default_value' => !empty($node->opengraph_meta) ? $node->opengraph_meta[$f] : '',
+      '#default_value' =>  $default_value,
       '#description' => t($i[1]),
     );
     // global fallback value?
@@ -167,11 +172,16 @@ function _opengraph_meta_contact_form_fields($node = NULL) {
   $defaults = OpenGraphMeta::instance()->get_og_optional_tag_defaults($node);
 
   foreach ($fields as $f => $i) {
+    $default_value = '';
+    if (!empty($node->opengraph_meta) && !empty($node->opengraph_meta[$f])) {
+      $default_value = $node->opengraph_meta[$f];
+    }
+
     $ret[$f] = array(
       '#title' => t($i[0]),
       '#type' => 'textfield',
       '#maxlength' => 255,
-      '#default_value' => !empty($node->opengraph_meta) ? $node->opengraph_meta[$f] : '',
+      '#default_value' => $default_value,
       '#description' => t($i[1]),
     );
     // global fallback value?
