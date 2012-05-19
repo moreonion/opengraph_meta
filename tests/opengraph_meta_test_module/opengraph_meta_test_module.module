@@ -6,7 +6,9 @@
  * Implements hook_og_tag_render_alter().
  */
 function opengraph_meta_test_module_og_tag_render_alter() {
-  return call_user_func_array(array('OpenGraphMetaTestModule','hook_og_tag_render_alter'), func_get_args());
+  $args = func_get_args();
+
+  return call_user_func_array(array('OpenGraphMetaTestModule','hook_og_tag_render_alter'), $args);
 }
 
 
