@@ -17,6 +17,8 @@ abstract class OGMTTestBase extends DrupalWebTestCase {
   protected  $ogm_render = NULL;
 
   public function setUp() {
+    parent::setUp();
+
     $this->ogm = OpenGraphMeta::instance();
     $this->ogm_data = new OGMTestData();
     $this->ogm_settings = new OGMTestSettings();
@@ -29,6 +31,8 @@ abstract class OGMTTestBase extends DrupalWebTestCase {
   public function tearDown() {
     $instance = OpenGraphMeta::instance();
     call_user_func_array(array(&$instance, '__set_objects'), $this->ogm_objects_backup);
+
+    parent::tearDown();
   }
 
 
