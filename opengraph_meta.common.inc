@@ -14,7 +14,7 @@ define('OPENGRAPH_META_VAR_FALLBACK_IMG', 'opengraph_meta_fallback_img');
 define('OPENGRAPH_META_VAR_OPTIONAL_TAGS', 'opengraph_meta_optional_tags');
 
 
-define('OPENGRAPH_META_DRUPAL_VERSION', intval(substr(DRUPAL_CORE_COMPATIBILITY,0,1)));
+define('OPENGRAPH_META_DRUPAL_VERSION', ('7.x' == DRUPAL_CORE_COMPATIBILITY ? 7 : 6));
 
 
 
