@@ -147,7 +147,7 @@ class OGMTBasicTest extends OGMTTestBase {
     $this->ogm->render_data($node, $this->ogm->load_node_data($node));
     $this->_check_rendered_meta_tags(array(
       'og:'.OpenGraphMeta::TITLE => $node->title,
-      'og:'.OpenGraphMeta::DESCRIPTION => mb_substr(strip_tags(OpenGraphMetaDrupalLayer::get_node_body($node)),0,200),
+      'og:'.OpenGraphMeta::DESCRIPTION => drupal_substr(strip_tags(OpenGraphMetaDrupalLayer::get_node_body($node)),0,200),
       'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
       'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
     ),__FUNCTION__);
@@ -226,7 +226,7 @@ class OGMTBasicTest extends OGMTTestBase {
     $this->ogm->render_data($node, $this->ogm->load_node_data($node));
     $this->_check_rendered_meta_tags(array(
       'og:'.OpenGraphMeta::TITLE => $node->title,
-      'og:'.OpenGraphMeta::DESCRIPTION => mb_substr(strip_tags(OpenGraphMetaDrupalLayer::get_node_body($node)),0,200),
+      'og:'.OpenGraphMeta::DESCRIPTION => drupal_substr(strip_tags(OpenGraphMetaDrupalLayer::get_node_body($node)),0,200),
       'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
       'og:'.OpenGraphMeta::IMAGE => url('default.jpg', array('absolute' => TRUE)),
       'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
@@ -243,7 +243,7 @@ class OGMTBasicTest extends OGMTTestBase {
 
     $this->_check_rendered_meta_tags(array(
       'og:'.OpenGraphMeta::TITLE => $node->title,
-      'og:'.OpenGraphMeta::DESCRIPTION => mb_substr(strip_tags(OpenGraphMetaDrupalLayer::get_node_body($node)),0,200),
+      'og:'.OpenGraphMeta::DESCRIPTION => drupal_substr(strip_tags(OpenGraphMetaDrupalLayer::get_node_body($node)),0,200),
       'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
       'og:'.OpenGraphMeta::IMAGE => url($imgpath, array('absolute' => TRUE)),
       'og:'.OpenGraphMeta::URL => url('node/1', array('absolute' => TRUE)),
