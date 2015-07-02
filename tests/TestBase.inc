@@ -59,24 +59,12 @@ abstract class OGMTTestBase extends DrupalWebTestCase {
 
 
   protected function _set_node_body(&$node, $body) {
-    switch (OPENGRAPH_META_DRUPAL_VERSION) {
-      case 6:
-        $node->body = $body;
-        break;
-      default:
-        $node->body = array(LANGUAGE_NONE => array('0' => array('value' => $body)));
-    }
+    $node->body = array(LANGUAGE_NONE => array('0' => array('value' => $body)));
   }
 
 
   protected function _create_img_field($mime, $path) {
-    switch (OPENGRAPH_META_DRUPAL_VERSION) {
-      case 6:
-        return array('filemime' => $mime, 'filepath' => $path);
-        break;
-      default:
-        return array('filemime' => $mime, 'uri' => $path);
-    }
+    return array('filemime' => $mime, 'uri' => $path);
   }
 
 
