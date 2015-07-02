@@ -312,7 +312,7 @@ class OpenGraphMeta {
         if ($item->hasAttribute('src')) {
           $url = $item->getAttribute('src');
           if (!empty($url)) {
-            $ret[] = array('title' => $url, 'alt' => $url, 'url' => $url);
+            $ret[$url] = array('title' => $url, 'alt' => $url, 'url' => $url);
           }
         }
       }
@@ -554,14 +554,15 @@ class OpenGraphMetaDrupalLayer {
     if (is_array($fields)) {
       if (!empty($fields['filemime']) && FALSE !== stripos($fields['filemime'], 'image') && !empty($fields[$_uri_field])) {
         $url = $fields[$_uri_field];
+        $thumb_url = $url;
         if (7 <= OPENGRAPH_META_DRUPAL_VERSION)
-          $url = image_style_url('thumbnail', $fields[$_uri_field]);
+          $thumb_url = image_style_url('thumbnail', $fields[$_uri_field]);
 
-        array_push($resultarray, array(
+        $resultarray[$url] = array(
           'title' => !empty($fields['title']) ? $fields['title'] : $url,
           'alt' => !empty($fields['alt']) ? $fields['alt'] : $url,
-          'url' => $url,
-        ));
+          'url' => $thumb_url,
+        );
       }
       else {
         foreach ($fields as $cv) {
@@ -575,11 +576,7 @@ class OpenGraphMetaDrupalLayer {
   /** Get rendered IMG tag for the OGMT node image selector. */
   public static function theme_selector_image($image) {
     $attributes = array('class' => 'opengraph-thumb');
-    $abs_path = url(ltrim($image['url'],'/'),
-      array(
-        'absolute' => TRUE
-      )
-    );
+    $abs_path = url(ltrim($image['url'],'/'));
     switch (OPENGRAPH_META_DRUPAL_VERSION) {
       case 6:
         return theme('image', $abs_path, $image['alt'], $image['title'],
