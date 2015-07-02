@@ -14,10 +14,6 @@ define('OPENGRAPH_META_VAR_FALLBACK_IMG', 'opengraph_meta_fallback_img');
 define('OPENGRAPH_META_VAR_OPTIONAL_TAGS', 'opengraph_meta_optional_tags');
 
 
-define('OPENGRAPH_META_DRUPAL_VERSION', ('7.x' == DRUPAL_CORE_COMPATIBILITY ? 7 : 6));
-
-
-
 class OpenGraphMeta {
 
   const TITLE = 'title';
@@ -439,40 +435,19 @@ class OpenGraphMetaDrupalLayer {
 
   /** Get all available node content types. */
   public static function get_node_types() {
-    switch (OPENGRAPH_META_DRUPAL_VERSION) {
-      case 6:
-        return node_get_types();
-        break;
-      case 7:
-      case 8:
-        return node_type_get_types();
-        break;
-      default:
-        self::err('No API for fetching node types found.');
-        return array();
-    }
+    return node_type_get_types();
   }
 
   /** Render given META tag to HTML output. */
   public static function render_meta_tag($name, $content) {
-    switch (OPENGRAPH_META_DRUPAL_VERSION) {
-      case 6:
-        drupal_set_html_head("<meta property=\"$name\" content=\"{$content}\" />");
-        break;
-      case 7:
-      case 8:
-        $element = array(
-          '#tag' => 'meta',
-          '#attributes' => array(
-            'property' => $name,
-            'content' => $content,
-          ),
-        );
-        drupal_add_html_head($element, "opengraph_meta_$name");
-        break;
-      default:
-        self::err('No API for rendering META tags.');
-    }
+    $element = array(
+      '#tag' => 'meta',
+      '#attributes' => array(
+        'property' => $name,
+        'content' => $content,
+      ),
+    );
+    drupal_add_html_head($element, "opengraph_meta_$name");
   }
 
 
@@ -487,15 +462,9 @@ class OpenGraphMetaDrupalLayer {
    * @return void
    */
   public static function update_default_ogtype_for_node_type($type_id, $form_values) {
-    switch (OPENGRAPH_META_DRUPAL_VERSION) {
-      case 6:
-        $cck_content_type_id = OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$type_id;
-        if (array_key_exists($cck_content_type_id, $form_values['description_cck']))
-          variable_set($cck_content_type_id, $form_values['description_cck'][$cck_content_type_id]);
-      default:
-        $content_type_id = OPENGRAPH_META_VAR_CONTENT_TYPE_.$type_id;
-        if (array_key_exists($content_type_id, $form_values['types']))
-          variable_set($content_type_id, $form_values['types'][$content_type_id]);
+    $content_type_id = OPENGRAPH_META_VAR_CONTENT_TYPE_.$type_id;
+    if (array_key_exists($content_type_id, $form_values['types'])) {
+      variable_set($content_type_id, $form_values['types'][$content_type_id]);
     }
   }
 
@@ -507,33 +476,10 @@ class OpenGraphMetaDrupalLayer {
    */
   public static function get_node_body($node) {
     $body = '';
-
-    switch (OPENGRAPH_META_DRUPAL_VERSION) {
-      case 6:
-        // check if we have an alternative field from which to grab description.
-        $description_cck_field = variable_get(OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$node->type, '');
-        if (!empty($description_cck_field) && !empty($node->$description_cck_field)) {
-          $v = $node->$description_cck_field;
-          if (is_array($v[0]) && !empty($v[0]['value']))
-            $body = $v[0]['value'];
-        }
-
-        if (empty($body) && !empty($node->body))
-          $body = $node->body;
-        break;
-      default:
-        $lang = field_language('node', $node, 'body');
-        if (!$lang)
-          $lang = LANGUAGE_NONE;
-        if (
-            !empty($node) &&
-            !empty($node->body) &&
-            !empty($node->body[$lang]) &&
-            !empty($node->body[$lang]['0']) &&
-            !empty($node->body[$lang]['0']['value'])
-          )
-              $body = $node->body[$lang]['0']['value'];
-        break;
+    $lang = field_language('node', $node, 'body');
+    $lang = $lang ? $lang : LANGUAGE_NONE;
+    if (!empty($node->body[$lang]['0']['value'])) {
+      $body = $node->body[$lang]['0']['value'];
     }
     return $body;
   }
@@ -547,16 +493,10 @@ class OpenGraphMetaDrupalLayer {
    * @param $resultarray will hold results.
    */
   public static function extract_image_fields($fields, array &$resultarray) {
-    $_uri_field = 'uri';
-    if (6 == OPENGRAPH_META_DRUPAL_VERSION)
-      $_uri_field = 'filepath';
-
     if (is_array($fields)) {
-      if (!empty($fields['filemime']) && FALSE !== stripos($fields['filemime'], 'image') && !empty($fields[$_uri_field])) {
-        $url = $fields[$_uri_field];
-        $thumb_url = $url;
-        if (7 <= OPENGRAPH_META_DRUPAL_VERSION)
-          $thumb_url = image_style_url('thumbnail', $fields[$_uri_field]);
+      if (!empty($fields['filemime']) && FALSE !== stripos($fields['filemime'], 'image') && !empty($fields['uri'])) {
+        $url = $fields['uri'];
+        $thumb_url = image_style_url('thumbnail', $fields['uri']);
 
         $resultarray[$url] = array(
           'title' => !empty($fields['title']) ? $fields['title'] : $url,
@@ -577,52 +517,28 @@ class OpenGraphMetaDrupalLayer {
   public static function theme_selector_image($image) {
     $attributes = array('class' => 'opengraph-thumb');
     $abs_path = url(ltrim($image['url'],'/'));
-    switch (OPENGRAPH_META_DRUPAL_VERSION) {
-      case 6:
-        return theme('image', $abs_path, $image['alt'], $image['title'],
-            array_merge($attributes, array('width' => '32px', 'height' => '32px')), FALSE);
-        break;
-      case 7:
-      case 8:
-        return theme('image',
-          array(
-               'path' => $abs_path,
-               'alt' => $image['alt'],
-               'height' => '60px',
-               'attributes' => array_merge($attributes, array('title' => $image['title']))
-          )
-        );
-        break;
-      default:
-        self::err('No API for theming images');
-        return '';
-    }
+    return theme('image',
+      array(
+        'path' => $abs_path,
+        'alt' => $image['alt'],
+        'height' => '60px',
+        'attributes' => array_merge($attributes, array('title' => $image['title']))
+      )
+    );
   }
 
   /** Delete OGM tags for given node. */
   public static function delete_tags($nid) {
-    switch (OPENGRAPH_META_DRUPAL_VERSION) {
-      case 6:
-        db_query("DELETE FROM {".OPENGRAPH_META_TABLE."} WHERE nid = %d", $nid);
-        break;
-      default:
-        db_query("DELETE FROM {".OPENGRAPH_META_TABLE."} WHERE nid = :nid", array(':nid' => $nid));
-    }
+    db_query("DELETE FROM {".OPENGRAPH_META_TABLE."} WHERE nid = :nid", array(':nid' => $nid));
   }
 
 
   /** Load OGM tags for given node. */
   public static function load_tags($nid) {
-    switch (OPENGRAPH_META_DRUPAL_VERSION) {
-      case 6:
-        return db_fetch_object(db_query("SELECT * FROM {".OPENGRAPH_META_TABLE."} WHERE nid = %d", $nid));
-        break;
-      default:
-        $result = db_query("SELECT * FROM {".OPENGRAPH_META_TABLE."} WHERE nid = :nid", array(':nid' => $nid));
-        if (0 >= $result->rowCount())
-          return FALSE;
-        return $result->fetchObject();
-    }
+    $result = db_query("SELECT * FROM {".OPENGRAPH_META_TABLE."} WHERE nid = :nid", array(':nid' => $nid));
+    if (0 >= $result->rowCount())
+      return FALSE;
+    return $result->fetchObject();
   }
 
 

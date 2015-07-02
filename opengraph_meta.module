@@ -3,8 +3,7 @@
 require_once('opengraph_meta.common.inc');
 
 
-define('OPENGRAPH_META_MENU_ADMIN_D7','admin/config/content/opengraph_meta');
-define('OPENGRAPH_META_MENU_ADMIN_D6','admin/settings/opengraph_meta');
+define('OPENGRAPH_META_MENU_ADMIN','admin/config/content/opengraph_meta');
 
 
 
@@ -14,7 +13,7 @@ define('OPENGRAPH_META_MENU_ADMIN_D6','admin/settings/opengraph_meta');
 function opengraph_meta_menu() {
   $admin_access = array(OPENGRAPH_META_PERM_ADMIN);
 
-  $menupath = (OPENGRAPH_META_DRUPAL_VERSION == 6) ? OPENGRAPH_META_MENU_ADMIN_D6 : OPENGRAPH_META_MENU_ADMIN_D7;
+  $menupath = OPENGRAPH_META_MENU_ADMIN;
 
   $items[$menupath] = array(
     'title' => 'Open Graph meta tags',
@@ -25,17 +24,6 @@ function opengraph_meta_menu() {
     'file' => 'opengraph_meta.admin.inc',
     'menu_name' => 'management',
   );
-
-  if (6 == OPENGRAPH_META_DRUPAL_VERSION) {
-    $items[$menupath]['type'] = MENU_NORMAL_ITEM;
-    $items[rtrim($menupath,'/').'/settings'] = array(
-      'title' => 'Settings',
-      'access arguments' => $admin_access,
-      'type' => MENU_DEFAULT_LOCAL_TASK,
-      'weight' => -1,
-      'file' => 'opengraph_meta.admin.inc',
-    );
-  }
 
   return $items;
 }
@@ -199,8 +187,4 @@ function _opengraph_meta_contact_form_fields($node = NULL) {
 
 
 
-if (6 == OPENGRAPH_META_DRUPAL_VERSION) {
-  require_once 'opengraph_meta.drupal6-hooks.inc';
-} else {
-  require_once 'opengraph_meta.drupal7-hooks.inc';
-}
+require_once 'opengraph_meta.drupal7-hooks.inc';
