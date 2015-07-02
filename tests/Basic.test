@@ -36,7 +36,7 @@ class OGMTBasicTest extends OGMTTestBase {
     $expected = array();
     foreach (array('field1.jpg','subfield.jpg','body.jpg') as $imgpath) {
       $url = image_style_url('thumbnail', $imgpath);
-      $expected[$imgpath] = array('title' => $url, 'alt' => $url, 'url' => $url);
+      $expected[$imgpath] = array('title' => $imgpath, 'alt' => $imgpath, 'url' => $url);
     }
     $this->assertEqual(serialize($expected), serialize($ret), t('Extract images from node fields and body content'));
   }
@@ -224,7 +224,7 @@ class OGMTBasicTest extends OGMTTestBase {
     // Check if the default image is returned when the node does not contain an image
     $this->ogm->render_data($node, $this->ogm->load_node_data($node));
     $this->_check_rendered_meta_tags(array(
-      'og:'.OpenGraphMeta::TITLE => $node->title,
+      'og:'.OpenGraphMeta::TITLE => drupal_get_title(),
       'og:'.OpenGraphMeta::DESCRIPTION => drupal_substr(strip_tags(OpenGraphMetaDrupalLayer::get_node_body($node)),0,200),
       'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
       'og:'.OpenGraphMeta::IMAGE => url('default.jpg', array('absolute' => TRUE)),
@@ -240,7 +240,7 @@ class OGMTBasicTest extends OGMTTestBase {
     $url = image_style_url('thumbnail', $imgpath);
 
     $this->_check_rendered_meta_tags(array(
-      'og:'.OpenGraphMeta::TITLE => $node->title,
+      'og:'.OpenGraphMeta::TITLE => drupal_get_title(),
       'og:'.OpenGraphMeta::DESCRIPTION => drupal_substr(strip_tags(OpenGraphMetaDrupalLayer::get_node_body($node)),0,200),
       'og:'.OpenGraphMeta::SITE_NAME => 'Drupal',
       'og:'.OpenGraphMeta::IMAGE => url($url, array('absolute' => TRUE)),

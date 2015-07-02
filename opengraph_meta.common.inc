@@ -308,7 +308,8 @@ class OpenGraphMeta {
         if ($item->hasAttribute('src')) {
           $url = $item->getAttribute('src');
           if (!empty($url)) {
-            $ret[$url] = array('title' => $url, 'alt' => $url, 'url' => $url);
+            $thumb_url = image_style_url('thumbnail', $url);
+            $ret[$url] = array('title' => $url, 'alt' => $url, 'url' => $thumb_url);
           }
         }
       }
