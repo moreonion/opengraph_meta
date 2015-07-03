@@ -3,7 +3,8 @@ description = Adds Open Graph meta tags to node pages for better social network 
 package = Open Graph
 core = 7.x
 
-files[] = opengraph_meta.admin.inc
+dependencies[] = select_or_other
+
 files[] = opengraph_meta.common.inc
 files[] = tests/Basic.test
 files[] = tests/Hooks.test
