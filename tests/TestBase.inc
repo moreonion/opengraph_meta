@@ -20,12 +20,9 @@ abstract class OGMTTestBase extends DrupalWebTestCase {
     parent::setUp();
 
     $this->ogm = OpenGraphMeta::instance();
-    $this->ogm_data = new OGMTestData();
     $this->ogm_settings = new OGMTestSettings();
-    $this->ogm_render = new OGMTestRender();
     $this->ogm_objects_backup = $this->ogm->__get_objects();
-    $this->ogm->__set_objects($this->ogm_data, $this->ogm_settings, $this->ogm_render);
-    $this->_reset_rendered_tags();
+    $this->ogm->__set_objects($this->ogm_settings);
   }
 
   public function tearDown() {
@@ -34,19 +31,6 @@ abstract class OGMTTestBase extends DrupalWebTestCase {
 
     parent::tearDown();
   }
-
-
-
-
-  protected function _check_saved_tags_for_node($nid, array $expected, $msg) {
-    $ret = $this->ogm_data->load_tags($nid);
-    $this->assertEqual($ret->nid,$nid, $msg);
-    foreach ($expected as $key => $val) {
-      $this->assertEqual($ret->$key, $val, $msg);
-    }
-  }
-
-
 
   protected function _build_test_node($nid) {
     $node = new stdClass();
@@ -66,27 +50,6 @@ abstract class OGMTTestBase extends DrupalWebTestCase {
   protected function _create_img_field($mime, $path) {
     return array('filemime' => $mime, 'uri' => $path);
   }
-
-
-
-  protected function _check_rendered_meta_tags(array $expected, $msg) {
-    $diff = array_diff_assoc($expected, $this->ogm_render->meta) + array_diff_assoc($this->ogm_render->meta, $expected);
-
-    $str = 'Difference: ';
-    foreach ($diff as $k => $v) {
-      $str .= $k .' => '. $v.', ';
-    }
-
-    $result = empty($diff);
-
-    $this->assertTrue($result, $result ? NULL : "$msg: $str");
-  }
-
-
-  protected function _reset_rendered_tags() {
-    $this->ogm->__reset_tags_already_output();
-    $this->ogm_render->meta = array();
-  }
 }
 
 
@@ -97,26 +60,5 @@ class OGMTestSettings implements OGMSettings {
   }
   public function set($name, $value) {
     $this->vars[$name] = $value;
-  }
-}
-
-class OGMTestRender implements OGMRender {
-  public $meta = array();
-  public function add_meta($name, $content) {
-    $this->meta[$name] = $content;
-  }
-}
-
-class OGMTestData implements OGMData {
-  public $tags = array();
-  public function load_tags($nid) {
-    return (isset($this->tags[$nid])) ? $this->tags[$nid] : FALSE;
-  }
-  public function delete_tags($nid) {
-    if (isset($this->tags[$nid]))
-      unset($this->tags[$nid]);
-  }
-  public function update_tags($field_data_including_nid, $primary_key = array()) {
-    $this->tags[$field_data_including_nid->nid] = $field_data_including_nid;
   }
 }

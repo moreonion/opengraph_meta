@@ -3,91 +3,56 @@
 require_once('opengraph_meta.common.inc');
 
 /**
- * Add the 'type' meta tag field to the meta tags table.
- * @see http://drupal.org/node/975350
+ * Implements hook_update_last_removed().
  */
-function opengraph_meta_update_6001(){
-  db_add_field(OPENGRAPH_META_TABLE, OpenGraphMeta::TYPE, array(
-    'type' => 'varchar',
-    'length' => '255',
-    'not null' => TRUE,
-    'default' => '',
-  ));
+function opengraph_meta_update_last_removed() {
+  return 6002;
 }
-
 
 /**
- * Add an 'optional_tags' field for additional tags.
- * @see http://drupal.org/node/983512
+ * Enable metatag_opengraph and select_or_other.
  */
-function opengraph_meta_update_6002(){
-  db_add_field(OPENGRAPH_META_TABLE, OpenGraphMeta::__OPTIONAL_DB_FIELD, array(
-    'type' => 'text',
-    'not null' => FALSE,
-    'serialize' => TRUE,
-  ));
+function opengraph_meta_update_7001() {
+  module_enable(['metatag_opengrapth', 'select_or_other']);
 }
 
-
-
-function opengraph_meta_schema(){
-    $schema[OPENGRAPH_META_TABLE] = array(
-      'description' => 'Stores Open Graph meta tag info useful for when sharing nodes on social networking sites, e.g. Facebook.',
-      'fields' => array(
-        'nid' => array(
-          'type' => 'int',
-          'unsigned' => TRUE,
-          'not null' => TRUE,
-        ),
-        OpenGraphMeta::TITLE => array(
-          'type' => 'varchar',
-          'length' => 255,
-          'not null' => TRUE,
-          'default' => ''
-        ),
-        OpenGraphMeta::DESCRIPTION => array(
-          'type' => 'text',
-          'not null' => TRUE,
-          'size' => 'big',
-        ),
-        OpenGraphMeta::IMAGE => array(
-          'type' => 'varchar',
-          'length' => '255',
-          'not null' => TRUE,
-          'default' => '',
-        ),
-        OpenGraphMeta::TYPE => array(
-          'type' => 'varchar',
-          'length' => '255',
-          'not null' => TRUE,
-          'default' => '',
-        ),
-        OpenGraphMeta::__OPTIONAL_DB_FIELD => array(
-          'type' => 'text',
-          'not null' => FALSE,
-          'serialize' => TRUE,
-        ),
-      ),
-      'primary key' => array('nid'),
-    );
-
-    return $schema;
-}
-
-
-function opengraph_meta_install() {
-  // nothing to do!
-}
-
-function opengraph_meta_uninstall() {
-    variable_del(OPENGRAPH_META_VAR_CONTENT_TYPES_ENABLED);
-    variable_del(OPENGRAPH_META_VAR_SITE_NAME);
-    variable_del(OPENGRAPH_META_VAR_FALLBACK_IMG);
-    variable_del(OPENGRAPH_META_VAR_OPTIONAL_TAGS);
-    $types = OpenGraphMetaDrupalLayer::get_node_types();
-    foreach ($types as $id => $d) {
-      variable_del(OPENGRAPH_META_VAR_CONTENT_TYPE_.$id);
-      variable_del(OPENGRAPH_META_VAR_CONTENT_TYPE_CCK_.$id);
+/**
+ * Migrate to metatag storage.
+ */
+function opengraph_meta_update_7002() {
+  $rows = db_select('opengraph_meta', 'og')
+    ->innerJoin('node', 'n', 'n.nid=og.nid')
+    ->fields('og')
+    ->fields('n', ['vid', 'language'])
+    ->execute();
+  foreach ($rows as $row) {
+    $metatags = metatag_metatags_load('node', $row->nid);
+    foreach ($row as $key => $value) {
+      if (!in_array($key, ['nid', 'vid', 'language', 'optional'])) {
+        $metatags[$row->language]["og:$key"]['value'] = $value;
+      }
     }
+    foreach ($row->optional as $key => $value) {
+      $metatags[$row->language]["og:$key"]['value'] = $value;
+    }
+    metatag_metatags_save('node', $row->nid, $row->vid, $metatags, $row->language);
+  }
+  db_drop_table('opengraph_meta');
+
+  // @TODO These default values need a migration!
+  variable_del('opengraph_meta_site_name');
+  variable_del('opengraph_meta_fallback_img');
+  variable_del('opengraph_meta_optional_tags');
+  $types = OpenGraphMetaDrupalLayer::get_node_types();
+  foreach ($types as $id => $d) {
+    variable_del('opengraph_meta_type_'.$id);
+    variable_del('opengraph_meta_cck_'.$id);
+  }
 }
 
+/**
+ * Implements hook_uninstall().
+ */
+function opengraph_meta_uninstall() {
+  variable_del(OPENGRAPH_META_VAR_CONTENT_TYPES_ENABLED);
+}

@@ -28,7 +28,6 @@ function opengraph_meta_menu() {
   return $items;
 }
 
-
 /**
  * Implementation of hook_form_alter.
  */
@@ -40,37 +39,37 @@ function opengraph_meta_form_alter(&$form, $form_state, $form_id) {
     // check that tags are enabled for this node type and that user has permission to edit them
     if (!OpenGraphMeta::instance()->tags_are_enabled_for_content_type($node->type) || !user_access(OPENGRAPH_META_PERM_EDIT))
       return;
+    $lang = metatag_entity_get_language('node', $form['#node']);
+    $metatags = &$form['metatags'][$lang]['open-graph'];
+    $parents = ['metatags', $lang];
 
     // add meta tags editing for making it easier to share on Facebook
     $form['opengraph_meta'] = array(
       '#type' => 'fieldset',
       '#title' => t('Open Graph meta tags (e.g. for Facebook sharing)'),
-      '#description' => t('Here you can specify the exact title and summary text for this node as it will appear when shared on e.g. Facebook'),
+      '#description' => $metatags['#description'],
       '#tree' => TRUE,
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
       '#weight' => 100,
-      OpenGraphMeta::TITLE => array(
-        '#title' => t('Title'),
-        '#type' => 'textfield',
-        '#maxlength' => 255,
-        '#default_value' => !empty($node->opengraph_meta) ? $node->opengraph_meta[OpenGraphMeta::TITLE] : '',
-        '#description' => t('The title of the node. If left blank then the node title will be used.'),
-      ),
-      OpenGraphMeta::DESCRIPTION => array(
-        '#title' => t('Summary'),
-        '#type' => 'textarea',
-        '#default_value' => !empty($node->opengraph_meta) ? $node->opengraph_meta[OpenGraphMeta::DESCRIPTION] : '',
-        '#description' => t('The summary of the node. If left blank then the first 200 characters of the node body text will be used.'),
-      ),
-      OpenGraphMeta::TYPE => array(
-        '#title' => t('Type'),
-        '#type' => 'select',
-        '#options' => OpenGraphMeta::instance()->get_all_og_types_for_select_field(),
-        '#default_value' => !empty($node->opengraph_meta) ? $node->opengraph_meta[OpenGraphMeta::TYPE] : '',
-        '#description' => t('The type of the node. if left unset then the value set for the %type content type will be used: "@setting"',array('%type' => $node->type, '@setting' => variable_get(OPENGRAPH_META_VAR_CONTENT_TYPE_.$node->type, ''))),
-      ),
     );
+
+    $form['opengraph_meta']['title'] = [
+      '#title' => t('Title'),
+      '#parents' => array_merge($parents, ['og:title', 'value']),
+    ] + $metatags['og:title']['value'];
+    unset($metatags['og:title']['value']);
+
+    $form['opengraph_meta']['description'] = [
+      '#title' => t('Description'),
+      '#parents' => array_merge($parents, ['og:description', 'value']),
+    ] + $metatags['og:description']['value'];
+    unset($metatags['og:description']['value']);
+
+    $form['opengraph_meta']['type'] = [
+      '#parents' => array_merge($parents, ['og:type', 'value']),
+    ] + $metatags['og:type']['value'];
+    unset($metatags['og:type']['value']);
 
     // Location stuff
     $form['opengraph_meta']['location'] = array(
@@ -80,9 +79,24 @@ function opengraph_meta_form_alter(&$form, $form_state, $form_id) {
       '#tree' => TRUE,
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
-      '#weight' => 100,
+      '#weight' => 10,
     );
-    $form['opengraph_meta']['location'] = array_merge($form['opengraph_meta']['location'], _opengraph_meta_location_form_fields($node));
+    $fields = array(
+      'latitude' => t('Geographical latitude as a decimal number.'),
+      'longitude' => t('Geographical longitude as a decimal number.'),
+      'street-address' => t('Local street address.'),
+      'locality' => t('E.g. town or city.'),
+      'region' => t('Region within country, e.g. a county.'),
+      'postal-code' => t('Postal code.'),
+      'country-name' => t('Full country name.'),
+    );
+    foreach ($fields as $f => $description) {
+      $form['opengraph_meta']['location'][$f] = [
+        '#description' => $description,
+        '#parents' => array_merge($parents, ["og:$f", 'value']),
+      ] + $metatags["og:$f"]['value'];
+      unset($metatags["og:$f"]['value']);
+    }
 
     // Contact stuff
     $form['opengraph_meta']['contact'] = array(
@@ -92,9 +106,19 @@ function opengraph_meta_form_alter(&$form, $form_state, $form_id) {
       '#tree' => TRUE,
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
-      '#weight' => 100,
+      '#weight' => 9,
     );
-    $form['opengraph_meta']['contact'] = array_merge($form['opengraph_meta']['contact'], _opengraph_meta_contact_form_fields($node));
+    $fields = array(
+      'email' => t('Email address.'),
+      'phone_number' => t('Phone number.'),
+      'fax_number' => t('Fax number.'),
+    );
+    foreach ($fields as $f => $description) {
+      $form['opengraph_meta']['contact'][$f] = [
+        '#parents' => array_merge($parents, ["og:$f", 'value']),
+      ] + $metatags["og:$f"]['value'];
+      unset($metatags["og:$f"]['value']);
+    }
 
     // if we have images in this node then show thumbnail selector
     $images = OpenGraphMeta::instance()->harvest_images_from_node($node);
@@ -103,90 +127,57 @@ function opengraph_meta_form_alter(&$form, $form_state, $form_id) {
       foreach ($images as $url => $image) {
         $image_selector_options[$url] = OpenGraphMetaDrupalLayer::theme_selector_image($image);
       }
-      $old_value = !empty($node->opengraph_meta) ? $node->opengraph_meta[OpenGraphMeta::IMAGE] : '';
-      $default = $old_value ? $old_value : key($image_selector_options);
-      $form['opengraph_meta'][OpenGraphMeta::IMAGE] = array(
+      $form['opengraph_meta']['image'] = [
         '#title' => t('Thumbnail image'),
         '#type' => 'select_or_other',
         '#select_type' => 'radios',
-        '#default_value' => $default,
+        '#default_value' => $metatags['og:image']['value']['#default_value'],
         '#description' => t('The thumbnail image that will get shown in e.g. a Facebook preview. If left unset then then the first available image will be used. If none available then the global fallback image will be used.'),
         '#options' => $image_selector_options,
         '#attributes' => array('class' => array('opengraph-thumbs-wrapper','clearfix')),
         '#other' => t('Manually enter an image URL.'),
-      );
-    }
-  }
-}
-
-
-function _opengraph_meta_location_form_fields($node = NULL) {
-  $ret = array();
-  $fields = array(
-    OpenGraphMeta::LATITUDE => array('Latitude', 'Geographical latitude as a decimal number.'),
-    OpenGraphMeta::LONGITUDE => array('Longitude', 'Geographical longitude as a decimal number.'),
-    OpenGraphMeta::STREET_ADDRESS => array('Street address', 'Local street address.'),
-    OpenGraphMeta::LOCALITY => array('Locality', 'E.g. town or city.'),
-    OpenGraphMeta::REGION => array('Region', 'Region within country, e.g. a county.'),
-    OpenGraphMeta::POST_CODE => array('Post code', 'Postal code.'),
-    OpenGraphMeta::COUNTRY_NAME => array('Country', 'Full country name.'),
-  );
-
-  $defaults = OpenGraphMeta::instance()->get_og_optional_tag_defaults($node);
-
-  foreach ($fields as $f => $i) {
-    $default_value = '';
-    if (!empty($node->opengraph_meta) && !empty($node->opengraph_meta[$f])) {
-      $default_value = $node->opengraph_meta[$f];
+      ];
+      unset($metatags['og:image']['value']);
     }
 
-    $ret[$f] = array(
-      '#title' => t($i[0]),
-      '#type' => 'textfield',
-      '#maxlength' => 255,
-      '#default_value' =>  $default_value,
-      '#description' => t($i[1]),
+    $form['opengraph_meta']['other'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Other'),
+      '#description' => t('Additional tags from the specification.'),
+      '#tree' => TRUE,
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#weight' => 11,
     );
-    // global fallback value?
-    if (!empty($node) && isset($node->nid) && !empty($defaults[$f])) {
-      $ret[$f]['#description'] .= t(' If left unset then the global fallback value will be used: "@s"',array('@s' => $defaults[$f]));
+    foreach ($metatags as $ogkey => &$fields) {
+      if (isset($fields['value'])) {
+        $f = substr($ogkey, 3);
+        $form['opengraph_meta']['other'][$f] = [
+          '#parents' => array_merge($parents, ["og:$f", 'value']),
+        ] + $fields['value'];
+        unset($fields['value']);
+      }
     }
+    $metatags['#type'] = 'container';
+
+    // Add our submit handler right before the metatag module's submit handler.
+    $submit = [];
+    foreach ($form['#submit'] as $func) {
+      if ($func == 'metatag_metatags_form_submit') {
+        $submit[] = 'opengraph_meta_node_form_submit';
+      }
+      $submit[] = $func;
+    }
+    $form['#submit'] = $submit;
   }
-  return $ret;
 }
 
+function opengraph_meta_node_form_submit($form, &$form_state) {
+  $lang = metatag_entity_get_language('node', $form['#node']);
+  $metatag = &$form_state['values']['metatags'][$lang];
+  $opengraph_meta = &$form_state['values']['opengraph_meta'];
 
-function _opengraph_meta_contact_form_fields($node = NULL) {
-  $ret = array();
-  $fields = array(
-    OpenGraphMeta::EMAIL => array('Email', 'Email address.'),
-    OpenGraphMeta::PHONE_NUMBER => array('Phone number', 'Phone number.'),
-    OpenGraphMeta::FAX_NUMBER => array('Fax number', 'Fax number.'),
-  );
-
-  $defaults = OpenGraphMeta::instance()->get_og_optional_tag_defaults($node);
-
-  foreach ($fields as $f => $i) {
-    $default_value = '';
-    if (!empty($node->opengraph_meta) && !empty($node->opengraph_meta[$f])) {
-      $default_value = $node->opengraph_meta[$f];
-    }
-
-    $ret[$f] = array(
-      '#title' => t($i[0]),
-      '#type' => 'textfield',
-      '#maxlength' => 255,
-      '#default_value' => $default_value,
-      '#description' => t($i[1]),
-    );
-    // global fallback value?
-    if (!empty($node) && isset($node->nid) && !empty($defaults[$f])) {
-      $ret[$f]['#description'] .= t(' If left unset then the global fallback value will be used: "@s"',array('@s' => $defaults[$f]));
-    }
-  }
-  return $ret;
+  $metatag['og:image']['value'] = $opengraph_meta['image'];
 }
-
-
 
 require_once 'opengraph_meta.drupal7-hooks.inc';
