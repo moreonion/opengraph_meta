@@ -53,10 +53,6 @@ class OpenGraphMeta {
  * Abstracts away differences between Drupal versions.
  */
 class OpenGraphMetaDrupalLayer {
-  /** Get all available node content types. */
-  public static function get_node_types() {
-    return node_type_get_types();
-  }
 
   /**
    * Get contents of node body.

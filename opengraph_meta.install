@@ -1,7 +1,5 @@
 <?php
 
-require_once('opengraph_meta.common.inc');
-
 /**
  * Implements hook_update_last_removed().
  */
@@ -42,19 +40,13 @@ function opengraph_meta_update_7002() {
   db_drop_table('opengraph_meta');
 
   // @TODO These default values need a migration!
+  variable_del('opengraph_meta_types_enabled');
   variable_del('opengraph_meta_site_name');
   variable_del('opengraph_meta_fallback_img');
   variable_del('opengraph_meta_optional_tags');
-  $types = OpenGraphMetaDrupalLayer::get_node_types();
+  $types = node_type_get_types();
   foreach ($types as $id => $d) {
     variable_del('opengraph_meta_type_'.$id);
     variable_del('opengraph_meta_cck_'.$id);
   }
-}
-
-/**
- * Implements hook_uninstall().
- */
-function opengraph_meta_uninstall() {
-  variable_del(OPENGRAPH_META_VAR_CONTENT_TYPES_ENABLED);
 }
