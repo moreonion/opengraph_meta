@@ -33,7 +33,9 @@ function opengraph_meta_update_7002() {
       }
     }
     foreach ($row->optional as $key => $value) {
-      $metatags[$row->language]["og:$key"]['value'] = $value;
+      if (!empty($value)) {
+        $metatags[$row->language]["og:$key"]['value'] = $value;
+      }
     }
     metatag_metatags_save('node', $row->nid, $row->vid, $metatags, $row->language);
   }
