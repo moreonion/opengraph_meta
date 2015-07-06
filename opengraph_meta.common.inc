@@ -1,23 +1,8 @@
 <?php
 
-define('OPENGRAPH_META_PERM_ADMIN', 'administer Open Graph meta tags');
-define('OPENGRAPH_META_PERM_EDIT', 'edit Open Graph meta tags');
-
-define('OPENGRAPH_META_VAR_CONTENT_TYPES_ENABLED', 'opengraph_meta_types_enabled');
-
-
 class OpenGraphMeta {
   /** Singleton instance. */
   private static $instance = NULL;
-
-  private $settings_obj = NULL;
-
- /**
-   * Constructor
-   */
-  private function __construct() {
-    $this->settings_obj = new OGMDrupalSettings();
-  }
 
   /** Get singleton instance. */
   public static function instance() {
@@ -25,17 +10,6 @@ class OpenGraphMeta {
       self::$instance = new OpenGraphMeta();
     }
     return self::$instance;
-  }
-
-  /**
-   * Get whether meta tags are enabled for the given content type.
-   * @return TRUE if so; FALSE otherwise.
-   */
-  public function tags_are_enabled_for_content_type($type) {
-    $content_types = $this->settings_obj->get(OPENGRAPH_META_VAR_CONTENT_TYPES_ENABLED, array());
-    $content_types = array_filter($content_types);
-    // if no content types specifically set OR if this content type is set then tags are enabled
-    return empty($content_types) || !empty($content_types[$type]);
   }
 
   /**
@@ -71,49 +45,7 @@ class OpenGraphMeta {
     return $ret;
   }
 
-
-  /**
-   * Log a warning message.
-   * @param $msg the message.
-   */
-  public function warn($msg) {
-    watchdog('opengraph_meta', $msg, array(), WATCHDOG_WARNING);
-  }
-  
-
-  /**
-   * FOR TESTING PURPOSES ONLY!
-   * Replace the internally used data and config instances with the given ones.
-   */
-  public function __set_objects($settings_obj) {
-    $this->settings_obj = $settings_obj;
-  }
-
-  /**
-   * FOR TESTING PURPOSES ONLY!
-   * Get the internally used data and config instances with the given ones.
-   */
-  public function __get_objects() {
-    return [$this->settings_obj];
-  }
 }
-
-
-/** Interface to getting/setting config settings. */
-interface OGMSettings {
-  public function get($name, $default);
-  public function set($name, $value);
-}
-/** Implementation which uses Drupal's variables store. */
-class OGMDrupalSettings implements OGMSettings {
-  public function get($name, $default) {
-    return variable_get($name, $default);
-  }
-  public function set($name, $value) {
-    variable_set($name, $value);
-  }
-}
-
 
 /**
  * Drupal compatibility layer.
@@ -121,9 +53,6 @@ class OGMDrupalSettings implements OGMSettings {
  * Abstracts away differences between Drupal versions.
  */
 class OpenGraphMetaDrupalLayer {
-  private function __construct() {}
-
-
   /** Get all available node content types. */
   public static function get_node_types() {
     return node_type_get_types();
@@ -170,20 +99,6 @@ class OpenGraphMetaDrupalLayer {
         }
       }
     }
-  }
-
-  /** Get rendered IMG tag for the OGMT node image selector. */
-  public static function theme_selector_image($image) {
-    $attributes = array('class' => 'opengraph-thumb');
-    $abs_path = url(ltrim($image['url'],'/'));
-    return theme('image',
-      array(
-        'path' => $abs_path,
-        'alt' => $image['alt'],
-        'height' => '60px',
-        'attributes' => array_merge($attributes, array('title' => $image['title']))
-      )
-    );
   }
 }
 

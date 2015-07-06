@@ -13,9 +13,6 @@ function opengraph_meta_form_alter(&$form, $form_state, $form_id) {
     }
 
     $node = $form['#node'];
-    // check that tags are enabled for this node type and that user has permission to edit them
-    if (!OpenGraphMeta::instance()->tags_are_enabled_for_content_type($node->type) || !user_access(OPENGRAPH_META_PERM_EDIT))
-      return;
     $lang = metatag_entity_get_language('node', $form['#node']);
     $metatags = &$form['metatags'][$lang]['open-graph'];
     $parents = ['metatags', $lang];
@@ -99,23 +96,24 @@ function opengraph_meta_form_alter(&$form, $form_state, $form_id) {
 
     // if we have images in this node then show thumbnail selector
     $images = OpenGraphMeta::instance()->harvest_images_from_node($node);
-    if (!empty($images)) {
-      $image_selector_options = array();
-      foreach ($images as $url => $image) {
-        $image_selector_options[$url] = OpenGraphMetaDrupalLayer::theme_selector_image($image);
-      }
-      $form['opengraph_meta']['image'] = [
-        '#title' => t('Thumbnail image'),
-        '#type' => 'select_or_other',
-        '#select_type' => 'radios',
-        '#default_value' => $metatags['og:image']['value']['#default_value'],
-        '#description' => t('The thumbnail image that will get shown in e.g. a Facebook preview. If left unset then then the first available image will be used. If none available then the global fallback image will be used.'),
-        '#options' => $image_selector_options,
-        '#attributes' => array('class' => array('opengraph-thumbs-wrapper','clearfix')),
-        '#other' => t('Manually enter an image URL.'),
-      ];
-      unset($metatags['og:image']['value']);
+    $image_selector_options = array();
+    foreach ($images as $url => $image) {
+      $image_selector_options[$url] = theme(
+        'opengraph_meta_thumbnail',
+        ['image' => $image]
+      );
     }
+    $form['opengraph_meta']['image'] = [
+      '#title' => t('Thumbnail image'),
+      '#type' => 'select_or_other',
+      '#select_type' => 'radios',
+      '#default_value' => $metatags['og:image']['value']['#default_value'],
+      '#description' => t('The thumbnail image that will get shown in e.g. a Facebook preview. If left unset then then the first available image will be used. If none available then the global fallback image will be used.'),
+      '#options' => $image_selector_options,
+      '#attributes' => array('class' => array('opengraph-thumbs-wrapper','clearfix')),
+      '#other' => t('Manually enter an image URL.'),
+    ];
+    unset($metatags['og:image']['value']);
 
     $form['opengraph_meta']['other'] = array(
       '#type' => 'fieldset',
@@ -163,3 +161,28 @@ function opengraph_meta_node_form_submit($form, &$form_state) {
 function opengraph_meta_metatag_info_alter(&$info) {
   $info['tags']['og:image']['class'] = 'OpengraphImageMetaTag';
 }
+
+/**
+ * Implements hook_theme().
+ */
+function opengraph_meta_theme() {
+  $theme['opengraph_meta_thumbnail'] = [
+    'variables' => ['image' => NULL],
+  ];
+  return $theme;
+}
+
+function theme_opengraph_meta_thumbnail($vars) {
+  $image = $vars['image'];
+  $attributes = array('class' => 'opengraph-thumb');
+  $abs_path = url(ltrim($image['url'],'/'));
+  return theme('image',
+    array(
+      'path' => $abs_path,
+      'alt' => $image['alt'],
+      'height' => '60px',
+      'attributes' => array_merge($attributes, array('title' => $image['title']))
+    )
+  );
+}
+
