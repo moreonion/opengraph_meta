@@ -41,13 +41,30 @@ function opengraph_meta_update_7002() {
   }
   db_drop_table('opengraph_meta');
 
-  // @TODO These default values need a migration!
+  $global_defaults = [];
+  foreach (['site_name' => 'site_name', 'fallback_img' => 'image'] as $k => $v) {
+    if ($value = variable_get('opengraph_meta_' . $k)) {
+      $global_defaults["og:$v"]['value'] = $value;
+    }
+  }
+  foreach (variable_get('opengraph_meta_optional_tags', []) as $k => $v) {
+    if ($v) {
+      $global_defaults["og:$k"]['value'] = $v;
+    }
+  }
+  if ($global_defaults) {
+    $config = metatag_config_load('global');
+    $config->config = $global_defaults + $config->config;
+    metatag_config_save($config);
+  }
+
   variable_del('opengraph_meta_types_enabled');
   variable_del('opengraph_meta_site_name');
   variable_del('opengraph_meta_fallback_img');
   variable_del('opengraph_meta_optional_tags');
   $types = node_type_get_types();
   foreach ($types as $id => $d) {
+    // @TODO These default values need a migration!
     variable_del('opengraph_meta_type_'.$id);
     variable_del('opengraph_meta_cck_'.$id);
   }
