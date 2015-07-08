@@ -68,4 +68,9 @@ function opengraph_meta_update_7002() {
     variable_del('opengraph_meta_type_'.$id);
     variable_del('opengraph_meta_cck_'.$id);
   }
+
+  // front:page settings should never override node settings.
+  $config = variable_get('default_metatag_config', []);
+  $config['global:frontpage'] = TRUE;
+  variable_set('default_metatag_config', $config);
 }
