@@ -8,6 +8,3 @@ dependencies[] = select_or_other
 
 files[] = opengraph_meta.common.inc
 files[] = tests/Basic.test
-files[] = tests/Hooks.test
-
-configure = admin/config/content/opengraph_meta

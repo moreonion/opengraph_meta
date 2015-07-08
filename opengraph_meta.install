@@ -18,9 +18,9 @@ function opengraph_meta_update_7001() {
  * Migrate to metatag storage.
  */
 function opengraph_meta_update_7002() {
-  $rows = db_select('opengraph_meta', 'og')
-    ->innerJoin('node', 'n', 'n.nid=og.nid')
-    ->fields('og')
+  $query = db_select('opengraph_meta', 'og');
+  $query->innerJoin('node', 'n', 'n.nid=og.nid');
+  $rows = $query->fields('og')
     ->fields('n', ['vid', 'language'])
     ->execute();
   foreach ($rows as $row) {
@@ -30,9 +30,11 @@ function opengraph_meta_update_7002() {
         $metatags[$row->language]["og:$key"]['value'] = $value;
       }
     }
-    foreach ($row->optional as $key => $value) {
-      if (!empty($value)) {
-        $metatags[$row->language]["og:$key"]['value'] = $value;
+    if (is_array($row->optional)) {
+      foreach ($row->optional as $key => $value) {
+        if (!empty($value)) {
+          $metatags[$row->language]["og:$key"]['value'] = $value;
+        }
       }
     }
     metatag_metatags_save('node', $row->nid, $row->vid, $metatags, $row->language);
