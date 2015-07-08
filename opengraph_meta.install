@@ -11,7 +11,7 @@ function opengraph_meta_update_last_removed() {
  * Enable metatag_opengraph and select_or_other.
  */
 function opengraph_meta_update_7001() {
-  module_enable(['metatag_opengrapth', 'select_or_other']);
+  module_enable(['metatag_opengraph', 'select_or_other']);
 }
 
 /**
