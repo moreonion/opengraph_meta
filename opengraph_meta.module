@@ -1,7 +1,5 @@
 <?php
 
-require_once('opengraph_meta.common.inc');
-
 /**
  * Implementation of hook_form_alter.
  */
