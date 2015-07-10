@@ -35,7 +35,7 @@ function opengraph_meta_node_load($nodes, $types) {
  */
 function opengraph_meta_node_view($node, $view_mode, $langcode){
   // only show meta tags if viewing full node as a page
-  if ('full' == $view_mode && !empty($node->opengraph_meta)) {
+  if (!empty($node->opengraph_meta) && node_is_page($node)) {
     OpenGraphMeta::instance()->render_data($node, $node->opengraph_meta);
   }
 }
