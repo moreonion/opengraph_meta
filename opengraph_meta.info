@@ -2,6 +2,7 @@ name = Open Graph meta tags
 description = Adds Open Graph meta tags to node pages for better social network sharing (e.g. http://developers.facebook.com/docs/share)
 package = Open Graph
 core = 7.x
+php = 5.4
 
 dependencies[] = metatag_opengraph
 dependencies[] = select_or_other
