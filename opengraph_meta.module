@@ -56,11 +56,11 @@ function opengraph_meta_form_alter(&$form, $form_state, $form_id) {
     $fields = array(
       'latitude' => t('Geographical latitude as a decimal number.'),
       'longitude' => t('Geographical longitude as a decimal number.'),
-      'street-address' => t('Local street address.'),
+      'street_address' => t('Local street address.'),
       'locality' => t('E.g. town or city.'),
       'region' => t('Region within country, e.g. a county.'),
-      'postal-code' => t('Postal code.'),
-      'country-name' => t('Full country name.'),
+      'postal_code' => t('Postal code.'),
+      'country_name' => t('Full country name.'),
     );
     foreach ($fields as $f => $description) {
       $form['opengraph_meta']['location'][$f] = [
