@@ -32,7 +32,7 @@ class OGMTBasicTest extends OGMTTestBase {
     $node->field_image = $this->_create_img_field('image','field1.jpg');
     $node->field_no_image = $this->_create_img_field('pdf','field2.jpg');
     $node->sub_field_image = array('child' => $this->_create_img_field('image','subfield.jpg'));
-    $ret = $this->ogm->harvest_images_from_node($node);
+    $ret = $this->ogm->harvestImagesFromNode($node);
     $expected = array();
     foreach (array('field1.jpg','subfield.jpg','body.jpg') as $imgpath) {
       $url = image_style_url('thumbnail', $imgpath);

@@ -4,6 +4,13 @@ class OpenGraphMeta {
   /** Singleton instance. */
   private static $instance = NULL;
 
+  protected $thumbnailStyle;
+
+  public function __construct($thumbnail_style = NULL) {
+    $default = module_exists('media') ? 'media_thumbnail' : 'thumbnail';
+    $this->thumbnailStyle = $thumbnail_style ?: variable_get('opengraph_meta_thumbnail_style', $default);
+  }
+
   /** Get singleton instance. */
   public static function instance() {
     if (empty(self::$instance)) {
@@ -17,13 +24,12 @@ class OpenGraphMeta {
    *
    * @return array(array('title' => , 'alt' => , 'url' =>))
    */
-  public function harvest_images_from_node($node) {
+  public function harvestImagesFromNode($node) {
     // extract image fields
-    $ret = array();
-    OpenGraphMetaDrupalLayer::extract_image_fields((array)$node, $ret);
+    $ret = $this->extractImageFields((array)$node);
 
     // extract all images from body content
-    $body = OpenGraphMetaDrupalLayer::get_node_body($node);
+    $body = $this->getNodeBody($node);
     if (!empty($body)) {
       libxml_use_internal_errors(TRUE); // turn off libxml errors for now
       $doc = new DOMDocument();
@@ -34,7 +40,7 @@ class OpenGraphMeta {
         if ($item->hasAttribute('src')) {
           $url = $item->getAttribute('src');
           if (!empty($url)) {
-            $thumb_url = image_style_url('thumbnail', $url);
+            $thumb_url = image_style_url($this->thumbnailStyle, $url);
             $ret[$url] = array('title' => $url, 'alt' => $url, 'url' => $thumb_url);
           }
         }
@@ -45,21 +51,12 @@ class OpenGraphMeta {
     return $ret;
   }
 
-}
-
-/**
- * Drupal compatibility layer.
- *
- * Abstracts away differences between Drupal versions.
- */
-class OpenGraphMetaDrupalLayer {
-
   /**
    * Get contents of node body.
    * @param  $node the node object.
    * @return empty string if no body found.
    */
-  public static function get_node_body($node) {
+  public function getNodeBody($node) {
     $body = '';
     $lang = field_language('node', $node, 'body');
     $lang = $lang ? $lang : LANGUAGE_NONE;
@@ -74,16 +71,15 @@ class OpenGraphMetaDrupalLayer {
    * Harvest images from node's image fields.
    *
    * array_walk_recursive() doesn't give us enough flexibility so we do the recursion manually.
-   *
-   * @param $resultarray will hold results.
    */
-  public static function extract_image_fields($fields, array &$resultarray) {
+  public function extractImageFields($fields) {
+    $result = [];
     if (is_array($fields)) {
       if (!empty($fields['filemime']) && FALSE !== stripos($fields['filemime'], 'image') && !empty($fields['uri'])) {
         $url = $fields['uri'];
-        $thumb_url = image_style_url('thumbnail', $fields['uri']);
+        $thumb_url = image_style_url($this->thumbnailStyle, $fields['uri']);
 
-        $resultarray[$url] = array(
+        $result[$url] = array(
           'title' => !empty($fields['title']) ? $fields['title'] : $url,
           'alt' => !empty($fields['alt']) ? $fields['alt'] : $url,
           'url' => $thumb_url,
@@ -91,10 +87,11 @@ class OpenGraphMetaDrupalLayer {
       }
       else {
         foreach ($fields as $cv) {
-          self::extract_image_fields($cv, $resultarray);
+          $result += $this->extractImageFields($cv);
         }
       }
     }
+    return $result;
   }
 }
 
