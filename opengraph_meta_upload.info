@@ -3,5 +3,6 @@ core = 7.x
 package = Features
 dependencies[] = features
 dependencies[] = image
+dependencies[] = opengraph_meta
 features[features_api][] = api:2
 features[field_base][] = opengraph_meta_image
