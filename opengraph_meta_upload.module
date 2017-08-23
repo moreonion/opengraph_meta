@@ -3,3 +3,43 @@
  * @file
  * Drupal needs this blank file.
  */
+
+function opengraph_meta_upload_form_alter(&$form, &$form_state, $form_id) {
+  // if editing a node
+  if ('node_form' == stristr($form_id, 'node_form')) {
+	if (!isset($form['opengraph_meta_image'])) {
+		return;
+	}
+    if (!isset($form['metatags'])) {
+      return;
+    }
+
+	// Move the opengraph_meta_image field into the opengraph_meta fieldset
+	$upload_field = $form['opengraph_meta_image'];
+	unset($form['opengraph_meta_image']);
+	$form['opengraph_meta']['opengraph_meta_upload'] = $upload_field;
+	dpm($form);
+
+    // Add our submit handler right before the opengraph metatag module's submit handler.
+    $submit = [];
+    foreach ($form['#submit'] as $func) {
+      if ($func == 'opengraph_meta_node_form_submit') {
+        $submit[] = 'opengraph_meta_image_node_form_submit';
+      }
+      $submit[] = $func;
+    }
+    $form['#submit'] = $submit;
+  }
+}
+
+function opengraph_meta_image_node_form_submit($form, &$form_state) {
+	$lang = metatag_entity_get_language('node', $form['#node']);
+	$opengraph_meta = &$form_state['values']['opengraph_meta'];
+	$opengraph_meta_upload = $form_state['values']['opengraph_meta']['opengraph_meta_upload']['und'][0];
+
+	if(isset($opengraph_meta_upload) && $opengraph_meta_upload['fid'] > 0) {
+		$file = file_load($opengraph_meta_upload['fid']);
+		$opengraph_meta['image'] = $file->uri;
+	}
+}
+
