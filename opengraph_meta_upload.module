@@ -26,7 +26,7 @@ function opengraph_meta_upload_form_alter(&$form, &$form_state, $form_id) {
 }
 
 /**
- * Inserts the URI of the uploaded image into opengraph_meta's image field
+ * Move the upload field back to its original position.
  */
 function opengraph_meta_image_node_form_submit(&$form, &$form_state) {
 	$upload_field = $form['opengraph_meta']['opengraph_meta_image'];
