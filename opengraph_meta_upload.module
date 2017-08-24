@@ -1,7 +1,7 @@
 <?php
 /**
  * @file
- * Drupal needs this blank file.
+ * Adds an image upload field to the open graph meta tags field set.
  */
 
 function opengraph_meta_upload_form_alter(&$form, &$form_state, $form_id) {
@@ -10,36 +10,31 @@ function opengraph_meta_upload_form_alter(&$form, &$form_state, $form_id) {
 	if (!isset($form['opengraph_meta_image'])) {
 		return;
 	}
-    if (!isset($form['metatags'])) {
-      return;
+	if (!isset($form['opengraph_meta'])) {
+		return;
     }
 
 	// Move the opengraph_meta_image field into the opengraph_meta fieldset
 	$upload_field = $form['opengraph_meta_image'];
 	unset($form['opengraph_meta_image']);
-	$form['opengraph_meta']['opengraph_meta_upload'] = $upload_field;
-	dpm($form);
+	unset($upload_field['#weight']);
+	$form['opengraph_meta']['opengraph_meta_image'] = $upload_field;
 
-    // Add our submit handler right before the opengraph metatag module's submit handler.
-    $submit = [];
-    foreach ($form['#submit'] as $func) {
-      if ($func == 'opengraph_meta_node_form_submit') {
-        $submit[] = 'opengraph_meta_image_node_form_submit';
-      }
-      $submit[] = $func;
-    }
-    $form['#submit'] = $submit;
+    // Add our submit handler
+	$form['#submit'][] = 'opengraph_meta_image_node_form_submit';
   }
 }
 
-function opengraph_meta_image_node_form_submit($form, &$form_state) {
-	$lang = metatag_entity_get_language('node', $form['#node']);
-	$opengraph_meta = &$form_state['values']['opengraph_meta'];
-	$opengraph_meta_upload = $form_state['values']['opengraph_meta']['opengraph_meta_upload']['und'][0];
+/**
+ * Inserts the URI of the uploaded image into opengraph_meta's image field
+ */
+function opengraph_meta_image_node_form_submit(&$form, &$form_state) {
+	$upload_field = $form['opengraph_meta']['opengraph_meta_image'];
+	unset($form['opengraph_meta']['opengraph_meta_image']);
+	$form['opengraph_meta_image'] = $upload_field;
 
-	if(isset($opengraph_meta_upload) && $opengraph_meta_upload['fid'] > 0) {
-		$file = file_load($opengraph_meta_upload['fid']);
-		$opengraph_meta['image'] = $file->uri;
-	}
+	$upload_field = $form_state['values']['opengraph_meta']['opengraph_meta_image'];
+	unset($form_state['values']['opengraph_meta']['opengraph_meta_image']);
+	$form_state['values']['opengraph_meta_image'] = $upload_field;
 }
 
