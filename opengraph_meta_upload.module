@@ -13,28 +13,47 @@ function opengraph_meta_upload_form_alter(&$form, &$form_state, $form_id) {
 	if (!isset($form['opengraph_meta'])) {
 		return;
     }
+	$form['#pre_render'][] = 'opengraph_meta_image_pre_render';
 
-	// Move the opengraph_meta_image field into the opengraph_meta fieldset
-	$upload_field = $form['opengraph_meta_image'];
-	unset($form['opengraph_meta_image']);
-	unset($upload_field['#weight']);
-	$form['opengraph_meta']['opengraph_meta_image'] = $upload_field;
-
-    // Add our submit handler
-	$form['#submit'][] = 'opengraph_meta_image_node_form_submit';
+	// Add our submit handler between the opengraph_meta and the
+	// metatags submit handler
+    $submit = [];
+    foreach ($form['#submit'] as $func) {
+      if ($func == 'metatag_metatags_form_submit') {
+        $submit[] = 'opengraph_meta_image_node_form_submit';
+      }
+      $submit[] = $func;
+    }
+    $form['#submit'] = $submit;
   }
 }
 
+function opengraph_meta_image_pre_render(&$element) {
+	$element['opengraph_meta']['opengraph_meta_image'] = $element['opengraph_meta_image'];
+	$element['opengraph_meta']['opengraph_meta_image']['#weight'] = 
+		$element['opengraph_meta']['type']['#weight'] + 1;
+
+	unset($element['opengraph_meta_image']);
+	unset($element['opengraph_meta']['image']);
+
+	return $element;
+}
+
 /**
- * Move the upload field back to its original position.
+ * Update metatags with the URL of the uploaded image.
  */
 function opengraph_meta_image_node_form_submit(&$form, &$form_state) {
-	$upload_field = $form['opengraph_meta']['opengraph_meta_image'];
-	unset($form['opengraph_meta']['opengraph_meta_image']);
-	$form['opengraph_meta_image'] = $upload_field;
+	$upload_field = &$form_state['values']['opengraph_meta_image'];
 
-	$upload_field = $form_state['values']['opengraph_meta']['opengraph_meta_image'];
-	unset($form_state['values']['opengraph_meta']['opengraph_meta_image']);
-	$form_state['values']['opengraph_meta_image'] = $upload_field;
+	// Set og:image to the URL of the uploaded image
+	$lang = metatag_entity_get_language('node', $form['#node']);
+	if(isset($upload_field['und'][0]['fid']) && $upload_field['und'][0]['fid'] > 0) {
+		$file = file_load($upload_field['und'][0]['fid']);
+		$og_image = file_create_url($file->uri);
+	} else {
+		$og_image = '';
+	}
+
+	$form_state['values']['metatags'][$lang]['og:image']['value'] = $og_image;
 }
 
