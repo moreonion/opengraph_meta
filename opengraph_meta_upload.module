@@ -18,12 +18,33 @@ function opengraph_meta_upload_form_node_form_alter(&$form, &$form_state, $form_
   // metatags submit handler.
   $submit = [];
   foreach ($form['#submit'] as $func) {
-    if ($func == 'metatag_metatags_form_submit') {
+    if ($func == 'opengraph_meta_node_form_submit') {
       $submit[] = 'opengraph_meta_image_node_form_submit';
     }
     $submit[] = $func;
   }
   $form['#submit'] = $submit;
+
+  $radio_field = &$form['opengraph_meta']['image'];
+  $upload_field = &$form['opengraph_meta_image'];
+
+  // Add "upload" as the second option.
+  $options = array_slice($radio_field['#options'], 0, 1, TRUE);
+  $options['upload'] = t('Upload an image.');
+  $options += array_slice($radio_field['#options'], 1, NULL, TRUE);
+  $radio_field['#options'] = $options;
+  // Hide the upload field if "upload" is not selected.
+  $upload_field['#states']['visible'][':input[name="opengraph_meta[image][select]"]']['value'] = 'upload';
+
+  $upload_item = &$upload_field['und'][0];
+  if (!empty($upload_item['#default_value'])) {
+    if ($radio_field['#default_value'] == $upload_item['#default_value']['uri']) {
+      // The uploaded image is selected.
+      $radio_field['#default_value'] = 'upload';
+    }
+    // Remove the uploaded image from the list of other images.
+    unset($radio_field['#options'][$upload_item['#default_value']['uri']]);
+  }
 }
 
 /**
@@ -33,8 +54,6 @@ function opengraph_meta_image_pre_render(&$element) {
   $element['opengraph_meta']['opengraph_meta_image'] = $element['opengraph_meta_image'];
   $element['opengraph_meta']['opengraph_meta_image']['#weight'] =
     $element['opengraph_meta']['type']['#weight'] + 1;
-
-  $element['opengraph_meta']['image']['#access'] = FALSE;
   unset($element['opengraph_meta_image']);
 
   return $element;
@@ -45,16 +64,12 @@ function opengraph_meta_image_pre_render(&$element) {
  */
 function opengraph_meta_image_node_form_submit(&$form, &$form_state) {
   $upload_field = &$form_state['values']['opengraph_meta_image'];
-
-  // Set og:image to the URL of the uploaded image.
-  $lang = metatag_entity_get_language('node', $form['#node']);
-  if (isset($upload_field['und'][0]['fid']) && $upload_field['und'][0]['fid'] > 0) {
-    $file = file_load($upload_field['und'][0]['fid']);
-    $og_image = file_create_url($file->uri);
+  $select_field = &$form_state['values']['opengraph_meta']['image'];
+  if ($select_field == 'upload') {
+    // Set og:image to the URL of the uploaded image.
+    if (isset($upload_field['und'][0]['fid']) && $upload_field['und'][0]['fid'] > 0) {
+      $file = file_load($upload_field['und'][0]['fid']);
+      $select_field = $file->uri;
+    }
   }
-  else {
-    $og_image = '';
-  }
-
-  $form_state['values']['metatags'][$lang]['og:image']['value'] = $og_image;
 }
