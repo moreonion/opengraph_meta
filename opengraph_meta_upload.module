@@ -1,22 +1,26 @@
 <?php
+
 /**
  * @file
  * Adds an image upload field to the open graph meta tags field set.
  */
 
+/**
+ * Implements hook_form_alter().
+ */
 function opengraph_meta_upload_form_alter(&$form, &$form_state, $form_id) {
-  // if editing a node
+  // If editing a node.
   if ('node_form' == stristr($form_id, 'node_form')) {
     if (!isset($form['opengraph_meta_image'])) {
-        return;
+      return;
     }
     if (!isset($form['opengraph_meta'])) {
-        return;
+      return;
     }
     $form['#pre_render'][] = 'opengraph_meta_image_pre_render';
 
     // Add our submit handler between the opengraph_meta and the
-    // metatags submit handler
+    // metatags submit handler.
     $submit = [];
     foreach ($form['#submit'] as $func) {
       if ($func == 'metatag_metatags_form_submit') {
@@ -28,9 +32,12 @@ function opengraph_meta_upload_form_alter(&$form, &$form_state, $form_id) {
   }
 }
 
+/**
+ * Pre_render function for opengraph_meta_image.
+ */
 function opengraph_meta_image_pre_render(&$element) {
   $element['opengraph_meta']['opengraph_meta_image'] = $element['opengraph_meta_image'];
-  $element['opengraph_meta']['opengraph_meta_image']['#weight'] = 
+  $element['opengraph_meta']['opengraph_meta_image']['#weight'] =
     $element['opengraph_meta']['type']['#weight'] + 1;
 
   $element['opengraph_meta']['image']['#access'] = FALSE;
@@ -45,7 +52,7 @@ function opengraph_meta_image_pre_render(&$element) {
 function opengraph_meta_image_node_form_submit(&$form, &$form_state) {
   $upload_field = &$form_state['values']['opengraph_meta_image'];
 
-  // Set og:image to the URL of the uploaded image
+  // Set og:image to the URL of the uploaded image.
   $lang = metatag_entity_get_language('node', $form['#node']);
   if (isset($upload_field['und'][0]['fid']) && $upload_field['und'][0]['fid'] > 0) {
     $file = file_load($upload_field['und'][0]['fid']);
@@ -57,4 +64,3 @@ function opengraph_meta_image_node_form_submit(&$form, &$form_state) {
 
   $form_state['values']['metatags'][$lang]['og:image']['value'] = $og_image;
 }
-
