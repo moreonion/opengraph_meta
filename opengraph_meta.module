@@ -23,7 +23,10 @@ function opengraph_meta_form_alter(&$form, $form_state, $form_id) {
       '#tree' => TRUE,
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
-      '#weight' => 100,
+      // This will be overridden later on in _field_extra_fields_pre_render()
+      // and _opengraph_meta_form_reset_weight() but this is what we want to
+      // achieve.
+      '#weight' => $form['metatags']['#weight'],
     );
 
     $form['opengraph_meta']['title'] = [
@@ -144,9 +147,27 @@ function opengraph_meta_form_alter(&$form, $form_state, $form_id) {
       $submit[] = $func;
     }
     $form['#submit'] = $submit;
+    $form['#pre_render'][] = '_opengraph_meta_form_reset_weight';
   }
 }
 
+/**
+ * Pre-render callback: Set weight of the opengraph_meta wrapper.
+ *
+ * @see opengraph_meta_form_alter()
+ */
+function _opengraph_meta_form_reset_weight($element) {
+  if (isset($element['opengraph_meta']) && isset($element['metatags'])) {
+    $element['opengraph_meta']['#weight'] = $element['metatags']['#weight'];
+  }
+  return $element;
+}
+
+/**
+ * Submit callback: Make our values saved via the metatag module.
+ *
+ * @see opengraph_meta_form_alter()
+ */
 function opengraph_meta_node_form_submit($form, &$form_state) {
   $lang = metatag_entity_get_language('node', $form['#node']);
   $metatag = &$form_state['values']['metatags'][$lang];
