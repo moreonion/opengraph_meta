@@ -12,7 +12,8 @@ function opengraph_meta_upload_form_node_form_alter(&$form, &$form_state, $form_
   if (!isset($form['opengraph_meta_image']) || !isset($form['opengraph_meta'])) {
     return;
   }
-  $form['#pre_render'][] = 'opengraph_meta_image_pre_render';
+  $form += ['#pre_render' => []];
+  array_unshift($form['#pre_render'], 'opengraph_meta_image_pre_render');
 
   // Add our submit handler between the opengraph_meta and the
   // metatags submit handler.
