@@ -38,7 +38,7 @@ function opengraph_meta_upload_form_node_form_alter(&$form, &$form_state, $form_
   $upload_field['#states']['visible'][':input[name="opengraph_meta[image][select]"]']['value'] = 'upload';
 
   $upload_item = &$upload_field['und'][0];
-  if (!empty($upload_item['#default_value'])) {
+  if (!empty($upload_item['#default_value']['uri'])) {
     if ($radio_field['#default_value'] == $upload_item['#default_value']['uri']) {
       // The uploaded image is selected.
       $radio_field['#default_value'] = 'upload';
