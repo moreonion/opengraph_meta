@@ -23,6 +23,7 @@ function opengraph_meta_form_alter(&$form, $form_state, $form_id) {
       '#tree' => TRUE,
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
+      '#group' => $form['metatags']['#group'],
       // This will be overridden later on in _field_extra_fields_pre_render()
       // and _opengraph_meta_form_reset_weight() but this is what we want to
       // achieve.
